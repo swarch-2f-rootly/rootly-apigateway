@@ -7,7 +7,7 @@ on:
       - main
 
 jobs:
-  check-branch:
+  validate-pr-source-branch:
     runs-on: ubuntu-latest
     steps:
       - name: Check source branch

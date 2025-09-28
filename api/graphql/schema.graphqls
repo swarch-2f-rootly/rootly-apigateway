@@ -1,0 +1,781 @@
+"""
+Rootly Smart Agriculture Platform GraphQL Schema
+Integrates data from Analytics, Authentication, Data Management, and User Plant Management services
+"""
+
+scalar DateTime
+scalar Upload
+scalar UUID
+
+schema {
+    query: Query
+    mutation: Mutation
+    subscription: Subscription
+}
+
+# ========================================
+# DOMAIN TYPES
+# ========================================
+
+"""Plant entity with health monitoring and sensor integration"""
+type Plant {
+    id: UUID!
+    name: String!
+    type: PlantType
+    sensor: Sensor
+    microcontroller: Microcontroller
+    score: Float! # Health score 0-100
+    change: String! # Percentage change "+5.2%" or "-2.1%"
+    status: PlantStatus!
+    temperature: Float
+    humidity: Float # Air humidity
+    lightLevel: Float
+    soilHumidity: Float
+    location: Location
+    locationName: String # Direct location string from plant management
+    ownerUserId: UUID
+    owner: User
+    lastUpdate: DateTime!
+    image: String # Optional - images not stored yet
+    imageUrl: String # From plant management service - optional
+    alerts: Int!
+    thresholds: [Threshold!]!
+    createdAt: DateTime!
+    updatedAt: DateTime!
+}
+
+"""Microcontroller/Sensor device for monitoring plant conditions"""
+type Microcontroller {
+    id: UUID!
+    uniqueId: String! # Physical device identifier (e.g., "ESP8266-001")
+    type: String!
+    location: String
+    enabled: Boolean!
+    plantId: UUID
+    plant: Plant
+    status: SensorStatus!
+    lastReading: DateTime
+    isActive: Boolean!
+    batteryLevel: Float
+    signalStrength: Float
+    userAssociations: [UserMicrocontrollerAssociation!]!
+    createdAt: DateTime!
+}
+
+"""Legacy sensor type for backward compatibility"""
+type Sensor {
+    id: String! # Maps to microcontroller.uniqueId
+    plantId: ID
+    plant: Plant
+    microcontroller: Microcontroller
+    status: SensorStatus!
+    lastReading: DateTime
+    location: Location
+    isActive: Boolean!
+    batteryLevel: Float
+    signalStrength: Float
+}
+
+"""Association between user and microcontroller with role-based permissions"""
+type UserMicrocontrollerAssociation {
+    userId: UUID!
+    user: User!
+    microcontrollerId: UUID!
+    microcontroller: Microcontroller!
+    role: DeviceRole!
+    createdAt: DateTime!
+}
+
+"""Real-time sensor data"""
+type RealTimeData {
+    plantId: UUID
+    plant: Plant
+    sensorId: String!
+    microcontrollerId: UUID
+    microcontroller: Microcontroller
+    timestamp: DateTime!
+    temperature: Float
+    airHumidity: Float
+    soilHumidity: Float
+    lightLevel: Float
+}
+
+"""Historical data point for charts"""
+type ChartData {
+    plantId: UUID!
+    time: DateTime!
+    temperature: Float
+    humidity: Float # Air humidity
+    soilHumidity: Float
+    lightLevel: Float
+}
+
+"""Alert for plant monitoring"""
+type Alert {
+    id: UUID!
+    plantId: UUID!
+    plant: Plant!
+    type: AlertType!
+    priority: AlertPriority!
+    message: String!
+    value: String!
+    threshold: Threshold
+    timestamp: DateTime!
+    isRead: Boolean!
+    resolvedAt: DateTime
+}
+
+"""User account with device associations"""
+type User {
+    id: UUID!
+    name: String! # Full name derived from first_name + last_name
+    email: String!
+    firstName: String!
+    lastName: String!
+    profilePhotoUrl: String
+    role: UserRole!
+    permissions: [Permission!]!
+    isActive: Boolean!
+    deviceAssociations: [UserMicrocontrollerAssociation!]!
+    ownedPlants: [Plant!]!
+    createdAt: DateTime!
+    lastLogin: DateTime
+}
+
+"""Physical location for plants and sensors"""
+type Location {
+    id: UUID!
+    name: String!
+    description: String
+    coordinates: Coordinates
+    plants: [Plant!]!
+    sensors: [Sensor!]!
+    microcontrollers: [Microcontroller!]!
+}
+
+"""Global system statistics"""
+type GlobalStats {
+    totalPlants: Int!
+    healthyPlants: Int!
+    alertPlants: Int!
+    criticalPlants: Int!
+    averageTemperature: Float!
+    averageHumidity: Float!
+    activeSensors: Int!
+    activeMicrocontrollers: Int!
+    totalMicrocontrollers: Int!
+    enabledMicrocontrollers: Int!
+    uptime: Float! # Percentage uptime
+    lastUpdated: DateTime!
+}
+
+"""Plant type configuration"""
+type PlantType {
+    id: UUID!
+    name: String! # e.g., "Tomate", "Lechuga"
+    description: String
+    optimalTemperature: Range!
+    optimalHumidity: Range!
+    optimalSoilHumidity: Range!
+    optimalLightLevel: Range!
+    image: String # Optional - images not stored yet
+    plants: [Plant!]!
+}
+
+"""User notification"""
+type Notification {
+    id: UUID!
+    userId: UUID!
+    user: User!
+    type: NotificationType!
+    title: String!
+    message: String!
+    timestamp: DateTime!
+    isRead: Boolean!
+    plantId: UUID
+    plant: Plant
+}
+
+"""Monitoring threshold configuration"""
+type Threshold {
+    id: UUID!
+    plantId: UUID!
+    plant: Plant!
+    sensorType: SensorType!
+    minValue: Float!
+    maxValue: Float!
+    criticalMin: Float!
+    criticalMax: Float!
+    unit: String!
+}
+
+"""User session information"""
+type Session {
+    userId: UUID!
+    user: User!
+    token: String!
+    expiresAt: DateTime!
+    deviceInfo: String
+    lastActivity: DateTime!
+    isActive: Boolean!
+}
+
+"""Analytics report for single metric"""
+type AnalyticsReport {
+    controllerId: String! # Microcontroller uniqueId
+    microcontrollerId: UUID # Internal microcontroller ID
+    metrics: [MetricResult!]!
+    generatedAt: DateTime!
+    dataPointsCount: Int!
+    filters: AnalyticsFilter!
+}
+
+"""Metric calculation result"""
+type MetricResult {
+    metricName: String!
+    value: Float!
+    unit: String!
+    calculatedAt: DateTime!
+    controllerId: String!
+    microcontrollerId: UUID
+    description: String
+}
+
+"""Trend analysis for time-series data"""
+type TrendAnalysis {
+    metricName: String!
+    controllerId: String!
+    microcontrollerId: UUID
+    dataPoints: [TrendDataPoint!]!
+    interval: String!
+    generatedAt: DateTime!
+    filters: AnalyticsFilter!
+    totalPoints: Int!
+    averageValue: Float!
+    minValue: Float!
+    maxValue: Float!
+}
+
+"""Data point in trend analysis"""
+type TrendDataPoint {
+    timestamp: DateTime!
+    value: Float!
+    interval: String!
+}
+
+"""User role with permissions"""
+type UserRole {
+    id: UUID!
+    name: String!
+    description: String!
+    permissions: [Permission!]!
+    users: [User!]!
+}
+
+"""System permission"""
+type Permission {
+    id: UUID!
+    name: String!
+    description: String!
+    resource: String!
+    action: String!
+}
+
+"""Device filter result for user devices"""
+type UserDeviceList {
+    devices: [UserDevice!]!
+    totalCount: Int!
+    hasNextPage: Boolean!
+}
+
+"""User device with role information"""
+type UserDevice {
+    id: UUID!
+    uniqueId: String!
+    type: String!
+    location: String
+    enabled: Boolean!
+    role: DeviceRole!
+    plant: Plant
+    microcontroller: Microcontroller!
+}
+
+# ========================================
+# SUPPORTING TYPES
+# ========================================
+
+"""Geographic coordinates"""
+type Coordinates {
+    lat: Float!
+    lng: Float!
+}
+
+"""Value range for optimal conditions"""
+type Range {
+    min: Float!
+    max: Float!
+}
+
+"""Analytics query filter"""
+type AnalyticsFilter {
+    startTime: DateTime
+    endTime: DateTime
+    limit: Int
+}
+
+"""Multi-report analytics response"""
+type MultiReportResponse {
+    reports: [AnalyticsReport!]!
+    generatedAt: DateTime!
+    totalControllers: Int!
+    totalMetrics: Int!
+}
+
+"""Health check response"""
+type HealthStatus {
+    status: String!
+    service: String!
+    timestamp: DateTime!
+    details: String
+}
+
+"""Device operation result"""
+type DeviceOperationResult {
+    id: UUID!
+    success: Boolean!
+    message: String!
+    device: Microcontroller
+}
+
+# ========================================
+# ENUMS
+# ========================================
+
+enum PlantStatus {
+    HEALTHY
+    ATTENTION
+    CRITICAL
+}
+
+enum SensorStatus {
+    ACTIVE
+    INACTIVE
+    MAINTENANCE
+    ERROR
+}
+
+enum AlertType {
+    TEMPERATURE
+    HUMIDITY
+    SOIL
+    LIGHT
+    BATTERY
+    CONNECTIVITY
+}
+
+enum AlertPriority {
+    LOW
+    MEDIUM
+    HIGH
+    CRITICAL
+}
+
+enum NotificationType {
+    ALERT
+    INFO
+    WARNING
+    SUCCESS
+}
+
+enum SensorType {
+    TEMPERATURE
+    HUMIDITY
+    SOIL
+    LIGHT
+}
+
+enum TimePeriod {
+    HOUR
+    DAY
+    WEEK
+    MONTH
+    YEAR
+}
+
+enum MetricType {
+    AVERAGE
+    MIN
+    MAX
+    MEDIAN
+    PERCENTILE
+    COUNT
+}
+
+enum DeviceRole {
+    VIEWER
+    EDITOR
+    OWNER
+}
+
+# ========================================
+# INPUT TYPES
+# ========================================
+
+"""Input for creating a new plant"""
+input CreatePlantInput {
+    name: String!
+    typeId: UUID
+    microcontrollerId: UUID
+    sensorId: String # Legacy support
+    locationId: UUID
+    locationName: String
+    image: String # Optional - images not stored yet
+    thresholds: [ThresholdInput!]
+}
+
+"""Input for updating a plant"""
+input UpdatePlantInput {
+    name: String
+    typeId: UUID
+    microcontrollerId: UUID
+    sensorId: String # Legacy support
+    locationId: UUID
+    locationName: String
+    image: String # Optional - images not stored yet
+}
+
+"""Input for threshold configuration"""
+input ThresholdInput {
+    sensorType: SensorType!
+    minValue: Float!
+    maxValue: Float!
+    criticalMin: Float!
+    criticalMax: Float!
+}
+
+"""Input for user registration"""
+input RegisterInput {
+    email: String!
+    password: String!
+    firstName: String!
+    lastName: String!
+    profilePhoto: Upload
+}
+
+"""Input for user login"""
+input LoginInput {
+    email: String!
+    password: String!
+}
+
+"""Input for creating a location"""
+input CreateLocationInput {
+    name: String!
+    description: String
+    coordinates: CoordinatesInput
+}
+
+"""Input for coordinates"""
+input CoordinatesInput {
+    lat: Float!
+    lng: Float!
+}
+
+"""Input for creating plant types"""
+input CreatePlantTypeInput {
+    name: String!
+    description: String
+    optimalTemperature: RangeInput!
+    optimalHumidity: RangeInput!
+    optimalSoilHumidity: RangeInput!
+    optimalLightLevel: RangeInput!
+    image: String # Optional - images not stored yet
+}
+
+"""Input for value ranges"""
+input RangeInput {
+    min: Float!
+    max: Float!
+}
+
+"""Input for analytics query filters"""
+input AnalyticsFilterInput {
+    startTime: DateTime
+    endTime: DateTime
+    limit: Int
+}
+
+"""Input for multi-report analytics request"""
+input MultiReportInput {
+    controllers: [String!]!
+    metrics: [String!]!
+    filters: AnalyticsFilterInput!
+}
+
+"""Input for device association"""
+input DeviceAssociationInput {
+    microcontrollerId: UUID!
+    plantId: UUID
+    role: DeviceRole!
+}
+
+"""Input for device update"""
+input DeviceUpdateInput {
+    location: String
+    plantId: UUID
+    type: String
+    enabled: Boolean
+}
+
+"""Input for device filtering"""
+input DeviceFilterInput {
+    name: String
+    type: String
+    location: String
+    enabled: Boolean
+    role: DeviceRole
+    limit: Int
+    offset: Int
+}
+
+# ========================================
+# QUERIES
+# ========================================
+
+type Query {
+    # Health Check
+    health: HealthStatus!
+
+    # Plant Queries
+    getAllPlants: [Plant!]!
+    getPlantById(id: UUID!): Plant
+    getPlantsByStatus(status: PlantStatus!): [Plant!]!
+    getPlantsByLocation(locationId: UUID!): [Plant!]!
+    getPlantsByLocationName(locationName: String!): [Plant!]!
+    getPlantsWithAlerts: [Plant!]!
+    getPlantsByOwner(ownerId: UUID!): [Plant!]!
+    getUserOwnedPlants: [Plant!]! # Current user's owned plants
+
+    # Microcontroller/Device Queries
+    getAllMicrocontrollers: [Microcontroller!]!
+    getMicrocontrollerById(id: UUID!): Microcontroller
+    getMicrocontrollerByUniqueId(uniqueId: String!): Microcontroller
+    getActiveMicrocontrollers: [Microcontroller!]!
+    getEnabledMicrocontrollers: [Microcontroller!]!
+    getMicrocontrollersByLocation(location: String!): [Microcontroller!]!
+    getMicrocontrollersByType(type: String!): [Microcontroller!]!
+    
+    # User Device Management Queries
+    getUserDevices(filters: DeviceFilterInput): UserDeviceList!
+    getUserDeviceById(deviceId: UUID!): UserDevice
+    getUserDeviceAssociations(userId: UUID!): [UserMicrocontrollerAssociation!]!
+    canUserAccessDevice(deviceId: UUID!, requiredRole: DeviceRole): Boolean!
+
+    # Legacy Sensor Queries (backward compatibility)
+    getAllSensors: [Sensor!]!
+    getSensorById(id: String!): Sensor
+    getActiveSensors: [Sensor!]!
+    getSensorsByLocation(locationId: UUID!): [Sensor!]!
+
+    # Real-time Data Queries
+    getRealTimeData(plantId: UUID!): RealTimeData
+    getRealTimeDataBySensor(sensorId: String!): RealTimeData
+    getRealTimeDataByMicrocontroller(microcontrollerId: UUID!): RealTimeData
+    getBulkRealTimeData(plantIds: [UUID!]): [RealTimeData!]!
+
+    # Historical Data Queries
+    getHistoricalData(
+        plantId: UUID!
+        period: TimePeriod!
+        startTime: DateTime
+        endTime: DateTime
+        limit: Int
+    ): [ChartData!]!
+    
+    getHistoricalDataBySensor(
+        sensorId: String!
+        period: TimePeriod!
+        startTime: DateTime
+        endTime: DateTime
+        limit: Int
+    ): [ChartData!]!
+
+    getHistoricalDataByMicrocontroller(
+        microcontrollerId: UUID!
+        period: TimePeriod!
+        startTime: DateTime
+        endTime: DateTime
+        limit: Int
+    ): [ChartData!]!
+
+    # Alert Queries
+    getAllAlerts: [Alert!]!
+    getAlertsByPlant(plantId: UUID!): [Alert!]!
+    getUnreadAlerts: [Alert!]!
+    getAlertsByPriority(priority: AlertPriority!): [Alert!]!
+    getAlertsByType(type: AlertType!): [Alert!]!
+
+    # User & Authentication Queries
+    getCurrentUser: User
+    getUserById(id: UUID!): User
+    getAllUsers: [User!]!
+    getUserNotifications(userId: UUID!): [Notification!]!
+    getUnreadNotifications(userId: UUID!): [Notification!]!
+
+    # Location Queries
+    getAllLocations: [Location!]!
+    getLocationById(id: UUID!): Location
+    getLocationWithPlants(id: UUID!): Location
+
+    # Plant Type Queries
+    getAllPlantTypes: [PlantType!]!
+    getPlantTypeById(id: UUID!): PlantType
+
+    # Configuration Queries
+    getThresholds(plantId: UUID!): [Threshold!]!
+    getThresholdsByType(plantId: UUID!, sensorType: SensorType!): Threshold
+
+    # Statistics Queries
+    getGlobalStats: GlobalStats!
+    getPlantStats(plantId: UUID!): GlobalStats
+    getLocationStats(locationId: UUID!): GlobalStats
+    getUserDeviceStats: GlobalStats! # Current user's device statistics
+
+    # Analytics Queries
+    getSingleMetricReport(
+        controllerId: String!
+        metric: String!
+        filters: AnalyticsFilterInput
+    ): AnalyticsReport
+
+    getMultiMetricReport(input: MultiReportInput!): MultiReportResponse!
+
+    getTrendAnalysis(
+        controllerId: String!
+        metric: String!
+        interval: String!
+        filters: AnalyticsFilterInput
+    ): TrendAnalysis
+
+    getSupportedMetrics: [String!]!
+
+    # Session Queries
+    getActiveSessions(userId: UUID!): [Session!]!
+}
+
+# ========================================
+# MUTATIONS
+# ========================================
+
+type Mutation {
+    # Authentication Mutations
+    login(input: LoginInput!): Session!
+    register(input: RegisterInput!): User!
+    logout: Boolean!
+    refreshToken(token: String!): Session!
+
+    # Plant Management Mutations
+    createPlant(input: CreatePlantInput!): Plant!
+    updatePlant(id: UUID!, input: UpdatePlantInput!): Plant!
+    deletePlant(id: UUID!): Boolean!
+    assignMicrocontrollerToPlant(plantId: UUID!, microcontrollerId: UUID!): Plant!
+    unassignMicrocontrollerFromPlant(plantId: UUID!): Plant!
+    
+    # Legacy sensor assignment (backward compatibility)
+    assignSensorToPlant(plantId: UUID!, sensorId: String!): Plant!
+    unassignSensorFromPlant(plantId: UUID!): Plant!
+
+    # Microcontroller/Device Management Mutations
+    updateMicrocontrollerStatus(id: UUID!, status: SensorStatus!): Microcontroller!
+    enableMicrocontroller(id: UUID!): Microcontroller!
+    disableMicrocontroller(id: UUID!): Microcontroller!
+    updateMicrocontroller(id: UUID!, input: DeviceUpdateInput!): Microcontroller!
+    calibrateMicrocontroller(id: UUID!): Microcontroller!
+
+    # User Device Association Mutations
+    associateUserWithDevice(input: DeviceAssociationInput!): UserMicrocontrollerAssociation!
+    updateDeviceAssociation(
+        microcontrollerId: UUID!
+        plantId: UUID
+        role: DeviceRole
+    ): UserMicrocontrollerAssociation!
+    removeDeviceAssociation(microcontrollerId: UUID!): Boolean!
+
+    # Legacy sensor management (backward compatibility)
+    updateSensorStatus(id: String!, status: SensorStatus!): Sensor!
+    calibrateSensor(id: String!): Sensor!
+
+    # Alert Management Mutations
+    markAlertAsRead(alertId: UUID!): Alert!
+    markAllAlertsAsRead(plantId: UUID): Boolean!
+    resolveAlert(alertId: UUID!): Alert!
+    dismissAlert(alertId: UUID!): Boolean!
+
+    # Notification Management Mutations
+    markNotificationAsRead(notificationId: UUID!): Notification!
+    markAllNotificationsAsRead(userId: UUID!): Boolean!
+    dismissNotification(notificationId: UUID!): Boolean!
+
+    # Configuration Mutations
+    updateThresholds(plantId: UUID!, thresholds: [ThresholdInput!]!): [Threshold!]!
+    resetThresholdsToDefault(plantId: UUID!): [Threshold!]!
+
+    # Location Management Mutations
+    createLocation(input: CreateLocationInput!): Location!
+    updateLocation(id: UUID!, input: CreateLocationInput!): Location!
+    deleteLocation(id: UUID!): Boolean!
+
+    # Plant Type Management Mutations
+    createPlantType(input: CreatePlantTypeInput!): PlantType!
+    updatePlantType(id: UUID!, input: CreatePlantTypeInput!): PlantType!
+    deletePlantType(id: UUID!): Boolean!
+
+    # User Management Mutations
+    updateUserProfile(
+        id: UUID!
+        firstName: String
+        lastName: String
+        profilePhoto: Upload
+    ): User!
+    deactivateUser(id: UUID!): User!
+    activateUser(id: UUID!): User!
+    changePassword(currentPassword: String!, newPassword: String!): Boolean!
+
+    # Session Management Mutations
+    terminateSession(sessionId: String!): Boolean!
+    terminateAllSessions(userId: UUID!): Boolean!
+}
+
+# ========================================
+# SUBSCRIPTIONS
+# ========================================
+
+type Subscription {
+    # Real-time sensor data updates
+    realTimeData(plantId: UUID): RealTimeData!
+    realTimeDataBySensor(sensorId: String): RealTimeData!
+    realTimeDataByMicrocontroller(microcontrollerId: UUID): RealTimeData!
+    
+    # Alert subscriptions
+    newAlerts(plantId: UUID): Alert!
+    alertStatusChanged(alertId: UUID): Alert!
+    
+    # Plant status changes
+    plantStatusChanged(plantId: UUID): Plant!
+    plantHealthScoreChanged(plantId: UUID): Plant!
+    
+    # Microcontroller/sensor status updates
+    microcontrollerStatusChanged(microcontrollerId: UUID): Microcontroller!
+    sensorStatusChanged(sensorId: String): Sensor!
+    deviceConnectivityChanged: Microcontroller!
+    
+    # Device association changes
+    userDeviceAssociationChanged(userId: UUID!): UserMicrocontrollerAssociation!
+    
+    # Notification subscriptions
+    newNotifications(userId: UUID!): Notification!
+    
+    # System health monitoring
+    systemHealthChanged: HealthStatus!
+    globalStatsChanged: GlobalStats!
+}

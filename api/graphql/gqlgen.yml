@@ -1,0 +1,164 @@
+# Definición del esquema
+schema:
+  - schema.graphqls
+
+# Configuración de archivos generados
+exec:
+  filename: generated/generated.go
+model:
+  filename: generated/models_gen.go
+
+# Configuración del resolver
+resolver:
+  layout: single-file
+  dir: ../../internal/adapters/graphql
+  package: graphql
+  filename: resolver.go
+
+# Configuración de modelos y scalars personalizados
+models:
+  # Scalars personalizados
+  UUID:
+    model:
+      - github.com/google/uuid.UUID
+  DateTime:
+    model:
+      - github.com/99designs/gqlgen/graphql.Time
+  Upload:
+    model:
+      - github.com/99designs/gqlgen/graphql.Upload
+
+  # SOLO mapear entidades de dominio que necesitamos controlar manualmente
+  # (entidades con lógica de negocio y que se usan fuera de GraphQL)
+  
+  # Core Domain Entities
+  Plant:
+    model:
+      - github.com/swarch-2f-rootly/rootly-apigateway/internal/domain.Plant
+  User:
+    model:
+      - github.com/swarch-2f-rootly/rootly-apigateway/internal/domain.User
+  Microcontroller:
+    model:
+      - github.com/swarch-2f-rootly/rootly-apigateway/internal/domain.Microcontroller
+  UserMicrocontrollerAssociation:
+    model:
+      - github.com/swarch-2f-rootly/rootly-apigateway/internal/domain.UserMicrocontrollerAssociation
+  Sensor:
+    model:
+      - github.com/swarch-2f-rootly/rootly-apigateway/internal/domain.Sensor
+  
+  # Data Types
+  RealTimeData:
+    model:
+      - github.com/swarch-2f-rootly/rootly-apigateway/internal/domain.RealTimeData
+  ChartData:
+    model:
+      - github.com/swarch-2f-rootly/rootly-apigateway/internal/domain.ChartData
+  
+  # Monitoring Types
+  Alert:
+    model:
+      - github.com/swarch-2f-rootly/rootly-apigateway/internal/domain.Alert
+  PlantType:
+    model:
+      - github.com/swarch-2f-rootly/rootly-apigateway/internal/domain.PlantType
+  Threshold:
+    model:
+      - github.com/swarch-2f-rootly/rootly-apigateway/internal/domain.Threshold
+  Location:
+    model:
+      - github.com/swarch-2f-rootly/rootly-apigateway/internal/domain.Location
+  GlobalStats:
+    model:
+      - github.com/swarch-2f-rootly/rootly-apigateway/internal/domain.GlobalStats
+  Notification:
+    model:
+      - github.com/swarch-2f-rootly/rootly-apigateway/internal/domain.Notification
+  
+  # Auth Types
+  Session:
+    model:
+      - github.com/swarch-2f-rootly/rootly-apigateway/internal/domain.Session
+  UserRole:
+    model:
+      - github.com/swarch-2f-rootly/rootly-apigateway/internal/domain.UserRole
+  Permission:
+    model:
+      - github.com/swarch-2f-rootly/rootly-apigateway/internal/domain.Permission
+  
+  # Analytics Types
+  AnalyticsReport:
+    model:
+      - github.com/swarch-2f-rootly/rootly-apigateway/internal/domain.AnalyticsReport
+  MetricResult:
+    model:
+      - github.com/swarch-2f-rootly/rootly-apigateway/internal/domain.MetricResult
+  TrendAnalysis:
+    model:
+      - github.com/swarch-2f-rootly/rootly-apigateway/internal/domain.TrendAnalysis
+  TrendDataPoint:
+    model:
+      - github.com/swarch-2f-rootly/rootly-apigateway/internal/domain.TrendDataPoint
+  MultiReportResponse:
+    model:
+      - github.com/swarch-2f-rootly/rootly-apigateway/internal/domain.MultiReportResponse
+  AnalyticsFilter:
+    model:
+      - github.com/swarch-2f-rootly/rootly-apigateway/internal/domain.AnalyticsFilter
+  
+  # System Types
+  HealthStatus:
+    model:
+      - github.com/swarch-2f-rootly/rootly-apigateway/internal/domain.HealthStatus
+  DeviceOperationResult:
+    model:
+      - github.com/swarch-2f-rootly/rootly-apigateway/internal/domain.DeviceOperationResult
+  
+  # Helper Types
+  Coordinates:
+    model:
+      - github.com/swarch-2f-rootly/rootly-apigateway/internal/domain.Coordinates
+  Range:
+    model:
+      - github.com/swarch-2f-rootly/rootly-apigateway/internal/domain.Range
+
+  # User Device Types
+  UserDevice:
+    model:
+      - github.com/swarch-2f-rootly/rootly-apigateway/internal/domain.UserDevice
+  UserDeviceList:
+    model:
+      - github.com/swarch-2f-rootly/rootly-apigateway/internal/domain.UserDeviceList
+
+  # Enums - mapear para usar nuestras constantes
+  PlantStatus:
+    model:
+      - github.com/swarch-2f-rootly/rootly-apigateway/internal/domain.PlantStatus
+  SensorStatus:
+    model:
+      - github.com/swarch-2f-rootly/rootly-apigateway/internal/domain.SensorStatus
+  AlertType:
+    model:
+      - github.com/swarch-2f-rootly/rootly-apigateway/internal/domain.AlertType
+  AlertPriority:
+    model:
+      - github.com/swarch-2f-rootly/rootly-apigateway/internal/domain.AlertPriority
+  NotificationType:
+    model:
+      - github.com/swarch-2f-rootly/rootly-apigateway/internal/domain.NotificationType
+  SensorType:
+    model:
+      - github.com/swarch-2f-rootly/rootly-apigateway/internal/domain.SensorType
+  TimePeriod:
+    model:
+      - github.com/swarch-2f-rootly/rootly-apigateway/internal/domain.TimePeriod
+  MetricType:
+    model:
+      - github.com/swarch-2f-rootly/rootly-apigateway/internal/domain.MetricType
+  DeviceRole:
+    model:
+      - github.com/swarch-2f-rootly/rootly-apigateway/internal/domain.DeviceRole
+
+# LOS INPUT TYPES SE GENERAN AUTOMÁTICAMENTE
+# NO necesitamos mapearlos aquí - gqlgen los creará automáticamente

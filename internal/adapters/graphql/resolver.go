@@ -97,7 +97,7 @@ func (r *queryResolver) GetSingleMetricReport(ctx context.Context, metricName st
 			Limit:     filters.Limit,
 		}
 	}
-	
+
 	return r.analyticsService.GetSingleMetricReport(ctx, metricName, controllerID, domainFilters)
 }
 
@@ -117,13 +117,13 @@ func (r *queryResolver) GetSupportedMetrics(ctx context.Context) ([]string, erro
 	if err != nil {
 		return nil, err
 	}
-	
+
 	// Convert to simple string slice
 	metrics := make([]string, len(supportedMetrics.Metrics))
 	for i, metric := range supportedMetrics.Metrics {
 		metrics[i] = metric.Name
 	}
-	
+
 	return metrics, nil
 }
 
@@ -133,7 +133,7 @@ func (r *queryResolver) GetAnalyticsHealth(ctx context.Context) (*domain.Analyti
 	if err != nil {
 		return nil, err
 	}
-	
+
 	// Convert HealthCheck to AnalyticsHealthStatus
 	return &domain.AnalyticsHealthStatus{
 		ServiceName:  "analytics",
@@ -169,7 +169,7 @@ func (r *trendAnalysisResolver) AverageValue(ctx context.Context, obj *domain.Tr
 	if len(obj.DataPoints) == 0 {
 		return 0.0, nil
 	}
-	
+
 	sum := 0.0
 	for _, point := range obj.DataPoints {
 		sum += point.Value
@@ -182,7 +182,7 @@ func (r *trendAnalysisResolver) MinValue(ctx context.Context, obj *domain.TrendA
 	if len(obj.DataPoints) == 0 {
 		return 0.0, nil
 	}
-	
+
 	min := obj.DataPoints[0].Value
 	for _, point := range obj.DataPoints {
 		if point.Value < min {
@@ -197,7 +197,7 @@ func (r *trendAnalysisResolver) MaxValue(ctx context.Context, obj *domain.TrendA
 	if len(obj.DataPoints) == 0 {
 		return 0.0, nil
 	}
-	
+
 	max := obj.DataPoints[0].Value
 	for _, point := range obj.DataPoints {
 		if point.Value > max {

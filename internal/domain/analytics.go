@@ -23,11 +23,11 @@ type MetricResult struct {
 
 // AnalyticsReport represents a complete analytics report
 type AnalyticsReport struct {
-	ControllerID     string           `json:"controller_id"`
-	Metrics          []MetricResult   `json:"metrics"`
-	GeneratedAt      time.Time        `json:"generated_at"`
-	DataPointsCount  int              `json:"data_points_count"`
-	FiltersApplied   AnalyticsFilter  `json:"filters_applied"`
+	ControllerID    string          `json:"controller_id"`
+	Metrics         []MetricResult  `json:"metrics"`
+	GeneratedAt     time.Time       `json:"generated_at"`
+	DataPointsCount int             `json:"data_points_count"`
+	FiltersApplied  AnalyticsFilter `json:"filters_applied"`
 }
 
 // TrendDataPoint represents a single data point in trend analysis
@@ -39,12 +39,12 @@ type TrendDataPoint struct {
 
 // TrendAnalysis represents trend analysis for a specific metric
 type TrendAnalysis struct {
-	MetricName      string            `json:"metric_name"`
-	ControllerID    string            `json:"controller_id"`
-	DataPoints      []TrendDataPoint  `json:"data_points"`
-	Interval        string            `json:"interval"`
-	GeneratedAt     time.Time         `json:"generated_at"`
-	FiltersApplied  AnalyticsFilter   `json:"filters_applied"`
+	MetricName     string           `json:"metric_name"`
+	ControllerID   string           `json:"controller_id"`
+	DataPoints     []TrendDataPoint `json:"data_points"`
+	Interval       string           `json:"interval"`
+	GeneratedAt    time.Time        `json:"generated_at"`
+	FiltersApplied AnalyticsFilter  `json:"filters_applied"`
 }
 
 // MultiMetricReportRequest represents request for multi-controller analytics
@@ -86,17 +86,17 @@ type MetricInfo struct {
 
 // HealthCheck represents service health status
 type HealthCheck struct {
-	Status      string                 `json:"status"`
-	CheckedAt   time.Time              `json:"checked_at"`
-	Version     string                 `json:"version"`
-	Dependencies map[string]string      `json:"dependencies"`
+	Status       string            `json:"status"`
+	CheckedAt    time.Time         `json:"checked_at"`
+	Version      string            `json:"version"`
+	Dependencies map[string]string `json:"dependencies"`
 }
 
 // AnalyticsHealthStatus represents the health status of analytics service
 type AnalyticsHealthStatus struct {
-	ServiceName   string            `json:"service_name"`
-	Status        string            `json:"status"`
-	CheckedAt     time.Time         `json:"checked_at"`
-	Version       string            `json:"version"`
-	Dependencies  map[string]string `json:"dependencies"`
+	ServiceName  string            `json:"service_name"`
+	Status       string            `json:"status"`
+	CheckedAt    time.Time         `json:"checked_at"`
+	Version      string            `json:"version"`
+	Dependencies map[string]string `json:"dependencies"`
 }

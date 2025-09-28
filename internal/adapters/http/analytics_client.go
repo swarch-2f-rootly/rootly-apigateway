@@ -37,7 +37,7 @@ func (c *AnalyticsHTTPClient) GetSingleMetricReport(ctx context.Context, metricN
 	params := url.Values{}
 	params.Add("metric_name", metricName)
 	params.Add("id_controlador", controllerID)
-	
+
 	if filter.StartTime != nil {
 		params.Add("start_time", filter.StartTime.Format(time.RFC3339))
 	}
@@ -247,9 +247,9 @@ func (c *AnalyticsHTTPClient) GetAnalyticsHealth(ctx context.Context) (*domain.H
 	}
 
 	return &domain.HealthCheck{
-		Status:       healthResponse.Status,
-		CheckedAt:    healthResponse.Timestamp,
-		Version:      "1.0.0", // Backend doesn't provide version
+		Status:    healthResponse.Status,
+		CheckedAt: healthResponse.Timestamp,
+		Version:   "1.0.0", // Backend doesn't provide version
 		Dependencies: map[string]string{
 			"analytics_service": healthResponse.Status,
 		},

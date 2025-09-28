@@ -15,12 +15,12 @@ jobs:
         with:
           fetch-depth: 0
           token: ${{ secrets.PAT_TOKEN }}
-      
+
       - name: Configure Git
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
-      
+
       - name: Merge main to develop
         run: |
           git checkout develop

@@ -2,6 +2,7 @@ package ports
 
 import (
 	"context"
+
 	"github.com/swarch-2f-rootly/rootly-apigateway/internal/domain"
 )
 

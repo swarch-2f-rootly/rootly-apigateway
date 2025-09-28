@@ -27,7 +27,7 @@ func main() {
 	// Initialize dependencies using dependency injection
 	analyticsClient := httpAdapter.NewAnalyticsHTTPClient(cfg.AnalyticsServiceURL)
 	analyticsService := services.NewAnalyticsService(analyticsClient)
-	
+
 	// Initialize Gin router
 	gin.SetMode(cfg.GinMode)
 	router := gin.New()
@@ -60,11 +60,11 @@ func main() {
 	// Start server
 	serverAddr := fmt.Sprintf(":%s", cfg.Port)
 	log.Printf("API Gateway starting on port %s", cfg.Port)
-	
+
 	if cfg.GraphQLPlaygroundEnabled {
 		log.Printf("GraphQL Playground available at http://localhost:%s/playground", cfg.Port)
 	}
-	
+
 	log.Printf("GraphQL endpoint available at http://localhost:%s/graphql", cfg.Port)
 	log.Printf("Health check available at http://localhost:%s/health", cfg.Port)
 

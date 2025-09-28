@@ -11,9 +11,9 @@ import (
 // Config holds all configuration for the API Gateway
 type Config struct {
 	// Service URLs
-	AnalyticsServiceURL      string
-	AuthServiceURL          string
-	DataManagementServiceURL string
+	AnalyticsServiceURL       string
+	AuthServiceURL            string
+	DataManagementServiceURL  string
 	PlantManagementServiceURL string
 
 	// Server configuration
@@ -41,9 +41,9 @@ func LoadConfig() *Config {
 
 	config := &Config{
 		// Service URLs
-		AnalyticsServiceURL:      getEnv("ANALYTICS_SERVICE_URL", "http://localhost:8001"),
-		AuthServiceURL:          getEnv("AUTH_SERVICE_URL", "http://localhost:8002"),
-		DataManagementServiceURL: getEnv("DATA_MANAGEMENT_SERVICE_URL", "http://localhost:8003"),
+		AnalyticsServiceURL:       getEnv("ANALYTICS_SERVICE_URL", "http://localhost:8001"),
+		AuthServiceURL:            getEnv("AUTH_SERVICE_URL", "http://localhost:8002"),
+		DataManagementServiceURL:  getEnv("DATA_MANAGEMENT_SERVICE_URL", "http://localhost:8003"),
 		PlantManagementServiceURL: getEnv("PLANT_MANAGEMENT_SERVICE_URL", "http://localhost:8004"),
 
 		// Server configuration

@@ -4,11 +4,13 @@ This directory contains the GraphQL schemas for all Rootly microservices.
 
 ## Architecture Overview
 
-Each microservice has its own consolidated GraphQL schema file that follows a standardized structure and naming convention.
+Each microservice has its own consolidated GraphQL schema file that follows a standardized structure and naming
+convention.
 
 ## File Structure
 
 ### Service Schema Files
+
 - **Pattern**: `{service-name}.graphqls`
 - **Purpose**: Consolidated GraphQL schema for each specific service
 - **Content**: All types, inputs, queries, mutations, and subscriptions for that service
@@ -16,6 +18,7 @@ Each microservice has its own consolidated GraphQL schema file that follows a st
 - **Scope**: Only implements what exists in the corresponding backend service
 
 ### Configuration Files
+
 - **`gqlgen.yml`**: gqlgen configuration for code generation
 - **`schema.graphqls`**: Main schema file (if needed for shared types)
 - **`generated/`**: Auto-generated Go code from schemas
@@ -23,6 +26,7 @@ Each microservice has its own consolidated GraphQL schema file that follows a st
 ## Current Services
 
 ### Analytics Service (`metrics.graphqls`)
+
 - **Backend**: `rootly-analytics-backend`
 - **Queries**: 5 implemented queries
 - **Mutations**: None (read-only service)
@@ -98,16 +102,19 @@ schema:
 ## Implementation Guidelines
 
 ### Backend Integration
+
 - Only implement GraphQL operations that exist in the backend service
 - Map GraphQL types directly to existing Go domain types
 - Use consistent naming conventions across services
 
 ### Type Mapping
+
 - Scalars: Use shared types (`DateTime`, `UUID`, `JSON`)
 - Domain types: Map to `/internal/domain/{Service}*` structures
 - Input types: Map to service-specific request structures
 
 ### Documentation
+
 - Use English comments for all types and fields
 - Include backend endpoint references in query comments
 - Mark unimplemented sections clearly
@@ -115,6 +122,7 @@ schema:
 ## Code Generation
 
 To generate GraphQL code for all services:
+
 ```bash
 cd /path/to/rootly-apigateway
 go run github.com/99designs/gqlgen generate
@@ -123,13 +131,14 @@ go run github.com/99designs/gqlgen generate
 ## Domain Mapping Pattern
 
 All GraphQL types should map to existing Go domain types:
+
 ```yaml
 models:
   # Service-specific types
   ServiceEntityName:
     model:
       - github.com/swarch-2f-rootly/rootly-apigateway/internal/domain.ServiceEntityName
-  
+
   # Input types  
   ServiceInputName:
     model:

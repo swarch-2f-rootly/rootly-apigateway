@@ -27,7 +27,7 @@ func (s *AnalyticsService) GetSingleMetricReport(ctx context.Context, metricName
 	if filters != nil {
 		filter = *filters
 	}
-	
+
 	report, err := s.analyticsClient.GetSingleMetricReport(ctx, metricName, controllerID, filter)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get single metric report: %w", err)

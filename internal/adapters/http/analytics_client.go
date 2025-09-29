@@ -15,6 +15,31 @@ import (
 	"github.com/swarch-2f-rootly/rootly-apigateway/internal/domain"
 )
 
+// parseFlexibleTimestamp parses timestamps in various formats that might come from the backend
+func parseFlexibleTimestamp(timestampStr string) time.Time {
+	if timestampStr == "" {
+		return time.Now()
+	}
+
+	// Try different timestamp formats that the backend might use
+	formats := []string{
+		time.RFC3339,                    // "2006-01-02T15:04:05Z07:00"
+		time.RFC3339Nano,                // "2006-01-02T15:04:05.999999999Z07:00"
+		"2006-01-02T15:04:05",           // Without timezone
+		"2006-01-02T15:04:05.999999",    // With microseconds, without timezone
+		"2006-01-02T15:04:05.999999999", // With nanoseconds, without timezone
+	}
+
+	for _, format := range formats {
+		if parsedTime, err := time.Parse(format, timestampStr); err == nil {
+			return parsedTime
+		}
+	}
+
+	// If all parsing fails, return current time as fallback
+	return time.Now()
+}
+
 // AnalyticsHTTPClient implements the AnalyticsClient interface using HTTP calls
 type AnalyticsHTTPClient struct {
 	baseURL    string
@@ -235,18 +260,21 @@ func (c *AnalyticsHTTPClient) GetAnalyticsHealth(ctx context.Context) (*domain.H
 
 	// Backend returns: {"status": "healthy", "service": "analytics", "timestamp": "..."}
 	var healthResponse struct {
-		Status    string    `json:"status"`
-		Service   string    `json:"service"`
-		Timestamp time.Time `json:"timestamp"`
+		Status    string `json:"status"`
+		Service   string `json:"service"`
+		Timestamp string `json:"timestamp"`
 	}
 
 	if err := json.Unmarshal(body, &healthResponse); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal response: %w", err)
 	}
 
+	// Parse the timestamp with flexible format handling
+	parsedTimestamp := parseFlexibleTimestamp(healthResponse.Timestamp)
+
 	return &domain.HealthCheck{
 		Status:    healthResponse.Status,
-		CheckedAt: healthResponse.Timestamp,
+		CheckedAt: parsedTimestamp,
 		Version:   "1.0.0", // Backend doesn't provide version
 		Dependencies: map[string]string{
 			"analytics_service": healthResponse.Status,

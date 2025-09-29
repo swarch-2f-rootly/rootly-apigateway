@@ -1,0 +1,20 @@
+name: validate-develop-pr-source-branch
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize]
+    branches:
+      - develop
+
+jobs:
+  validate-develop-pr-source-branch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check source branch
+        run: |
+          if [[ ! '${{ github.head_ref }}' =~ ^feature- ]]; then
+            echo "Error: Pull requests to 'develop' can only come from branches starting with 'feature-'."
+            echo "Current branch: '${{ github.head_ref }}'"
+            exit 1
+          fi
+          echo "Branch validation passed: '${{ github.head_ref }}'"

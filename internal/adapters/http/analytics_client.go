@@ -35,7 +35,6 @@ func NewAnalyticsHTTPClient(baseURL string) ports.AnalyticsClient {
 func (c *AnalyticsHTTPClient) GetSingleMetricReport(ctx context.Context, metricName string, controllerID string, filter domain.AnalyticsFilter) (*domain.AnalyticsReport, error) {
 	// Build query parameters
 	params := url.Values{}
-	params.Add("metric_name", metricName)
 	params.Add("id_controlador", controllerID)
 
 	if filter.StartTime != nil {
@@ -47,8 +46,7 @@ func (c *AnalyticsHTTPClient) GetSingleMetricReport(ctx context.Context, metricN
 	if filter.Limit != nil {
 		params.Add("limit", strconv.Itoa(*filter.Limit))
 	}
-
-	url := fmt.Sprintf("%s/analytics/reports/single?%s", c.baseURL, params.Encode())
+	url := fmt.Sprintf("%s/api/v1/analytics/report/%s?%s", c.baseURL, metricName, params.Encode())
 
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
@@ -87,7 +85,7 @@ func (c *AnalyticsHTTPClient) GetMultiMetricReport(ctx context.Context, request 
 		return nil, fmt.Errorf("failed to marshal request: %w", err)
 	}
 
-	url := fmt.Sprintf("%s/analytics/reports/multi-report", c.baseURL)
+	url := fmt.Sprintf("%s/api/v1/analytics/multi-report", c.baseURL)
 	req, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewBuffer(jsonData))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
@@ -131,7 +129,7 @@ func (c *AnalyticsHTTPClient) GetTrendAnalysis(ctx context.Context, request doma
 	}
 	params.Add("interval", request.Interval)
 
-	url := fmt.Sprintf("%s/analytics/trends/%s?%s", c.baseURL, request.MetricName, params.Encode())
+	url := fmt.Sprintf("%s/api/v1/analytics/trends/%s?%s", c.baseURL, request.MetricName, params.Encode())
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
@@ -164,7 +162,7 @@ func (c *AnalyticsHTTPClient) GetTrendAnalysis(ctx context.Context, request doma
 
 // GetSupportedMetrics retrieves the list of supported metrics from analytics service
 func (c *AnalyticsHTTPClient) GetSupportedMetrics(ctx context.Context) (*domain.SupportedMetrics, error) {
-	url := fmt.Sprintf("%s/analytics/metrics", c.baseURL)
+	url := fmt.Sprintf("%s/api/v1/analytics/metrics", c.baseURL)
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
@@ -212,7 +210,7 @@ func (c *AnalyticsHTTPClient) GetSupportedMetrics(ctx context.Context) (*domain.
 
 // GetAnalyticsHealth checks the health of the analytics service
 func (c *AnalyticsHTTPClient) GetAnalyticsHealth(ctx context.Context) (*domain.HealthCheck, error) {
-	url := fmt.Sprintf("%s/analytics/health", c.baseURL)
+	url := fmt.Sprintf("%s/api/v1/analytics/health", c.baseURL)
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)

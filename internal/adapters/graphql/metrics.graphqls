@@ -1,0 +1,202 @@
+# ========================================
+# SCALARS
+# Shared scalars for all Rootly services
+# ========================================
+
+scalar DateTime
+scalar UUID
+scalar JSON
+
+# ========================================
+# ENUMS
+# Basic enums for analytics service
+# ========================================
+
+# No specific enums implemented in current backend
+# Metric types are dynamic strings obtained from getSupportedMetrics
+
+# ========================================
+# INPUT TYPES
+# Inputs for analytics service
+# ========================================
+
+"""
+Filters for analytics queries
+Based on AnalyticsFilter from backend
+"""
+input AnalyticsFilterInput {
+    startTime: DateTime
+    endTime: DateTime
+    limit: Int
+}
+
+"""
+Input for multi-metric reports
+Based on MultiReportRequestModel from backend
+"""
+input MultiMetricReportInput {
+    controllers: [String!]!
+    metrics: [String!]!
+    filters: AnalyticsFilterInput!
+}
+
+"""
+Configuration for trend analysis
+Based on parameters from /trends/{metric_name} endpoint
+"""
+input TrendAnalysisInput {
+    metricName: String!
+    controllerId: String!
+    startTime: DateTime!
+    endTime: DateTime!
+    interval: String!
+}
+
+# ========================================
+# DOMAIN TYPES
+# Domain types for analytics service
+# ========================================
+
+"""
+Result of an individual calculated metric
+Based on MetricResult from backend
+"""
+type MetricResult {
+    metricName: String!
+    value: Float!
+    unit: String!
+    calculatedAt: DateTime!
+    controllerId: String!
+    microcontrollerId: UUID
+    description: String
+}
+
+"""
+Data point for trend analysis
+Based on TrendDataPoint from backend
+"""
+type TrendDataPoint {
+    timestamp: DateTime!
+    value: Float!
+    interval: String!
+}
+
+"""
+Filter applied to analytics queries
+Based on AnalyticsFilter from backend
+"""
+type AnalyticsFilter {
+    startTime: DateTime
+    endTime: DateTime
+    limit: Int
+}
+
+"""
+Analytics report for a specific metric
+Based on AnalyticsReport from backend
+"""
+type AnalyticsReport {
+    controllerId: String!
+    microcontrollerId: UUID
+    metrics: [MetricResult!]!
+    generatedAt: DateTime!
+    dataPointsCount: Int!
+    filters: AnalyticsFilter!
+}
+
+"""
+Trend analysis for time series
+Based on TrendAnalysis from backend
+"""
+type TrendAnalysis {
+    metricName: String!
+    controllerId: String!
+    microcontrollerId: UUID
+    dataPoints: [TrendDataPoint!]!
+    interval: String!
+    generatedAt: DateTime!
+    filters: AnalyticsFilter!
+    totalPoints: Int!
+    averageValue: Float!
+    minValue: Float!
+    maxValue: Float!
+}
+
+"""
+Response for multi-metric reports
+Based on MultiReportResponse from backend
+"""
+type MultiMetricReport {
+    reports: [AnalyticsReport!]!
+    generatedAt: DateTime!
+    totalControllers: Int!
+    totalMetrics: Int!
+}
+
+"""
+Analytics service health status
+Based on /health endpoint from backend
+"""
+type AnalyticsHealthStatus {
+    status: String!
+    service: String!
+    influxdb: String!
+    influxdbUrl: String!
+    timestamp: DateTime!
+}
+
+# ========================================
+# QUERIES
+# Queries for analytics service
+# ========================================
+
+type Query {
+    """
+    Generate analytics report for a single metric
+    Endpoint: GET /api/v1/analytics/report/{metric_name}
+    """
+    getSingleMetricReport(
+        metricName: String!
+        controllerId: String!
+        filters: AnalyticsFilterInput
+    ): AnalyticsReport
+
+    """
+    Generate multi-metric report for multiple controllers
+    Endpoint: POST /api/v1/analytics/multi-report
+    """
+    getMultiMetricReport(input: MultiMetricReportInput!): MultiMetricReport!
+
+    """
+    Trend analysis for a specific metric
+    Endpoint: GET /api/v1/analytics/trends/{metric_name}
+    """
+    getTrendAnalysis(input: TrendAnalysisInput!): TrendAnalysis
+
+    """
+    Get metrics supported by the system
+    Endpoint: GET /api/v1/analytics/metrics
+    """
+    getSupportedMetrics: [String!]!
+
+    """
+    Get analytics service health status
+    Endpoint: GET /api/v1/analytics/health
+    """
+    getAnalyticsHealth: AnalyticsHealthStatus!
+}
+
+# ========================================
+# MUTATIONS
+# ========================================
+
+# ========================================
+# SUBSCRIPTIONS
+# ========================================
+
+# ========================================
+# SCHEMA DEFINITION
+# ========================================
+schema {
+    query: Query
+}

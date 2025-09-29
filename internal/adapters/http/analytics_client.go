@@ -60,7 +60,7 @@ func NewAnalyticsHTTPClient(baseURL string) ports.AnalyticsClient {
 func (c *AnalyticsHTTPClient) GetSingleMetricReport(ctx context.Context, metricName string, controllerID string, filter domain.AnalyticsFilter) (*domain.AnalyticsReport, error) {
 	// Build query parameters
 	params := url.Values{}
-	params.Add("id_controlador", controllerID)
+	params.Add("controller_id", controllerID) // Changed from id_controlador to controller_id
 
 	if filter.StartTime != nil {
 		params.Add("start_time", filter.StartTime.Format(time.RFC3339))
@@ -145,7 +145,7 @@ func (c *AnalyticsHTTPClient) GetMultiMetricReport(ctx context.Context, request 
 func (c *AnalyticsHTTPClient) GetTrendAnalysis(ctx context.Context, request domain.TrendAnalysisRequest) (*domain.TrendAnalysis, error) {
 	// Build query parameters for trend analysis
 	params := url.Values{}
-	params.Add("id_controlador", request.ControllerID)
+	params.Add("controller_id", request.ControllerID) // Changed from id_controlador to controller_id
 	if request.Filters.StartTime != nil {
 		params.Add("start_time", request.Filters.StartTime.Format(time.RFC3339))
 	}
@@ -235,7 +235,7 @@ func (c *AnalyticsHTTPClient) GetSupportedMetrics(ctx context.Context) (*domain.
 
 // GetAnalyticsHealth checks the health of the analytics service
 func (c *AnalyticsHTTPClient) GetAnalyticsHealth(ctx context.Context) (*domain.HealthCheck, error) {
-	url := fmt.Sprintf("%s/api/v1/analytics/health", c.baseURL)
+	url := fmt.Sprintf("%s/health", c.baseURL) // Changed from /api/v1/analytics/health to /health
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)

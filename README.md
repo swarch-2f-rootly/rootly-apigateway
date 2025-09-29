@@ -1,6 +1,36 @@
 # Rootly API Gateway
 
-GraphQL API Gateway for the Rootly ecosystem that aggregates analytics and other microservices.
+**Rootly API Gateway** is a GraphQL-based API Gateway built for the Rootly Smart Plant Monitoring System. It acts as the central entry point that aggregates and orchestrates communication between multiple microservices in the Rootly ecosystem, providing a unified GraphQL interface for frontend applications.
+
+## 🌱 **About Rootly**
+
+Rootly is a comprehensive IoT-based plant monitoring system designed to help users track and analyze environmental conditions for optimal plant care. The system consists of multiple specialized microservices:
+
+- **Analytics Service**: Processes sensor data and generates insights
+- **Data Management Service**: Handles sensor data ingestion and storage
+- **User Plant Management Service**: Manages user profiles and plant configurations
+- **Authentication & Roles Service**: Handles user authentication and authorization
+
+The API Gateway serves as the orchestration layer, providing a single GraphQL endpoint that intelligently routes requests to the appropriate backend services, handles data aggregation, and ensures consistent API responses for client applications.
+
+## 🏗️ **Architecture**
+
+This API Gateway follows **Hexagonal Architecture** principles with clean separation of concerns:
+
+- **Domain Layer**: Core business entities and value objects
+- **Application Layer**: Use cases and business logic orchestration
+- **Infrastructure Layer**: External service adapters (HTTP clients, GraphQL resolvers)
+- **Ports & Adapters**: Interface definitions for external communication
+
+## 🚀 **Features**
+
+- **GraphQL Unified API**: Single endpoint for all microservice operations
+- **Service Orchestration**: Intelligent routing to backend services
+- **Real-time Analytics**: Sensor data processing and trend analysis
+- **Health Monitoring**: Service health checks and system status
+- **CORS Support**: Cross-origin resource sharing for web applications
+- **GraphQL Playground**: Interactive API exploration and testing
+- **Hexagonal Architecture**: Clean, maintainable, and testable codebase
 
 ## Prerequisites
 
@@ -75,71 +105,240 @@ http://localhost:8080/playground
 
 ## Example GraphQL Queries
 
-### Get Supported Metrics
+### 🔍 **Basic Health Check**
+Start with this simple query to verify the service is running:
 
 ```graphql
 query {
-    getSupportedMetrics
+  getSupportedMetrics
 }
 ```
 
-### Get Single Metric Report
+### 🩺 **Service Health Status**
+Check the health of the analytics service:
 
 ```graphql
 query {
-    getSingleMetricReport(
-        metricName: "temperature"
-        controllerID: "controller-123"
-        filters: {
-            startTime: "2024-01-01T00:00:00Z"
-            endTime: "2024-01-02T00:00:00Z"
-            limit: 100
-        }
-    ) {
-        controllerID
-        generatedAt
-        dataPointsCount
-        metrics {
-            metricName
-            value
-            unit
-            calculatedAt
-        }
+  getAnalyticsHealth {
+    status
+    service
+    influxdb
+    influxdbUrl
+    timestamp
+  }
+}
+```
+
+### 📊 **Single Metric Report**
+Get analytics data for a specific metric and controller:
+
+```graphql
+query SingleMetricReport {
+  getSingleMetricReport(
+    metricName: "temperature"
+    controllerId: "controller-123"
+    filters: {
+      startTime: "2024-01-01T00:00:00Z"
+      endTime: "2024-01-31T23:59:59Z"
+      limit: 100
     }
+  ) {
+    controllerId
+    generatedAt
+    dataPointsCount
+    metrics {
+      metricName
+      value
+      unit
+      calculatedAt
+    }
+  }
 }
 ```
 
-### Get Analytics Health
+### 🔢 **Multi-Metric Report**
+Get data for multiple metrics and controllers:
 
 ```graphql
-query {
-    getAnalyticsHealth {
-        serviceName
-        status
-        checkedAt
-        version
-        dependencies
+query MultiMetricReport {
+  getMultiMetricReport(
+    input: {
+      controllers: ["controller-123", "controller-456"]
+      metrics: ["temperature", "humidity", "light_intensity"]
+      filters: {
+        startTime: "2024-01-01T00:00:00Z"
+        endTime: "2024-01-31T23:59:59Z"
+        limit: 50
+      }
     }
+  ) {
+    generatedAt
+    totalControllers
+    totalMetrics
+    reports {
+      controllerId
+      dataPointsCount
+      metrics {
+        metricName
+        value
+        unit
+      }
+    }
+  }
 }
 ```
 
-## Configuration
+### 📈 **Trend Analysis**
+Analyze trends over time for specific metrics:
 
-The service reads configuration from environment variables (see `.env.example`):
+```graphql
+query TrendAnalysis {
+  getTrendAnalysis(
+    input: {
+      metricName: "temperature"
+      controllerId: "controller-123"
+      startTime: "2024-01-01T00:00:00Z"
+      endTime: "2024-01-07T23:59:59Z"
+      interval: "1h"
+    }
+  ) {
+    metricName
+    controllerId
+    interval
+    generatedAt
+    totalPoints
+    averageValue
+    minValue
+    maxValue
+    dataPoints {
+      timestamp
+      value
+      interval
+    }
+  }
+}
+```
 
-- `ANALYTICS_SERVICE_URL`: URL of the analytics backend service
-- `PORT`: Port for the API Gateway (default: 8080)
-- `GRAPHQL_PLAYGROUND_ENABLED`: Enable/disable GraphQL Playground
-- `CORS_ALLOW_ALL_ORIGINS`: Enable CORS for all origins
+### 🧪 **Simple Test Queries**
+
+**Quick Health Check:**
+```graphql
+{ getAnalyticsHealth { status } }
+```
+
+**Available Metrics:**
+```graphql
+{ getSupportedMetrics }
+```
+
+### 📝 **Testing Workflow**
+
+1. **Start with supported metrics** to see what's available
+2. **Check service health** to ensure backend connectivity
+3. **Use real controller IDs** from your analytics database
+4. **Start with small date ranges** for faster responses
+5. **Gradually test more complex multi-metric queries**
+
+## 🔧 **Configuration**
+
+The service reads configuration from environment variables. Copy `.env.example` to `.env` and adjust as needed:
+
+### **Backend Services**
+```env
+ANALYTICS_SERVICE_URL=http://localhost:8001
+AUTH_SERVICE_URL=http://localhost:8002
+DATA_MANAGEMENT_SERVICE_URL=http://localhost:8003
+PLANT_MANAGEMENT_SERVICE_URL=http://localhost:8004
+```
+
+### **Server Configuration**
+```env
+PORT=8080                                # API Gateway port
+GIN_MODE=debug                          # Gin framework mode (debug/release)
+```
+
+### **GraphQL Configuration**
+```env
+GRAPHQL_PLAYGROUND_ENABLED=true         # Enable GraphQL Playground UI
+GRAPHQL_INTROSPECTION_ENABLED=true     # Enable GraphQL introspection
+```
+
+### **CORS Configuration**
+```env
+CORS_ALLOW_ALL_ORIGINS=true            # Allow all origins (development)
+```
+
+### **Logging Configuration**
+```env
+LOG_LEVEL=info                         # Logging level (debug/info/warn/error)
+LOG_FORMAT=json                        # Log output format (json/text)
+```
+
+## 🎮 **GraphQL Playground**
+
+When `GRAPHQL_PLAYGROUND_ENABLED=true`, access the interactive GraphQL IDE at:
+
+```
+http://localhost:8080/playground
+```
+
+**Features:**
+- **Query Editor**: Write and execute GraphQL queries
+- **Schema Explorer**: Browse available types and fields
+- **Documentation**: Auto-generated API documentation
+- **Query History**: Access previously executed queries
+- **Variables Support**: Test queries with dynamic variables
+
+**Getting Started in Playground:**
+1. Open the Playground in your browser
+2. Use the **Docs** panel to explore available queries
+3. Start with simple queries like `{ getSupportedMetrics }`
+4. Use the **Schema** tab to understand data structures
+5. Copy and paste the example queries from this README
 
 ## Architecture
 
-This API Gateway follows hexagonal architecture principles:
+## 🏛️ **Architecture Overview**
 
-- **Domain**: Core business entities and value objects
-- **Ports**: Interfaces for external communication
-- **Adapters**: HTTP clients and GraphQL resolvers
-- **Services**: Business logic layer
+This API Gateway implements **Hexagonal Architecture** (Ports and Adapters) for maximum maintainability and testability:
+
+```
+┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│   GraphQL       │    │   HTTP Client   │    │   Config        │
+│   Resolvers     │    │   Adapters      │    │   Management    │
+└─────────────────┘    └─────────────────┘    └─────────────────┘
+         │                       │                       │
+         └───────────────────────┼───────────────────────┘
+                                 │
+            ┌─────────────────────┴─────────────────────┐
+            │              PORTS LAYER                  │
+            │  ┌─────────────────┐ ┌─────────────────┐  │
+            │  │ AnalyticsService│ │ AnalyticsClient │  │
+            │  │   Interface     │ │   Interface     │  │
+            │  └─────────────────┘ └─────────────────┘  │
+            └─────────────────────┬─────────────────────┘
+                                 │
+            ┌─────────────────────┴─────────────────────┐
+            │             DOMAIN LAYER                  │
+            │  ┌─────────────────┐ ┌─────────────────┐  │
+            │  │   Analytics     │ │     Domain      │  │
+            │  │   Entities      │ │   Value Objects │  │
+            │  └─────────────────┘ └─────────────────┘  │
+            └───────────────────────────────────────────┘
+```
+
+### **Layer Responsibilities:**
+
+- **🎯 Domain Layer**: Core business entities (`AnalyticsReport`, `MetricResult`, etc.)
+- **🔌 Ports Layer**: Interface contracts (`AnalyticsService`, `AnalyticsClient`)
+- **🔧 Adapters Layer**: External integrations (GraphQL resolvers, HTTP clients)
+- **⚙️ Infrastructure**: Configuration, logging, and cross-cutting concerns
+
+### **Benefits:**
+- **Testability**: Easy to mock external dependencies
+- **Maintainability**: Clear separation of concerns
+- **Flexibility**: Easy to swap implementations
+- **Domain-Driven**: Business logic stays in the core
 
 ## Development
 
@@ -239,14 +438,96 @@ internal/
   domain/             # Domain entities and value objects
 ```
 
-## Troubleshooting
+## 🛠️ **Troubleshooting**
 
-### Common Issues
+### **GraphQL Query Issues**
 
-#### GraphQL Generation Errors
+#### **"Field not found" Errors**
+```bash
+# Check the schema in GraphQL Playground
+# Use the correct field names: controllerId (not controllerID)
+```
 
+#### **"Cannot query field" Errors**
+```bash
+# Verify field names match the schema exactly
+# Check if using the correct input parameter structure
+```
+
+#### **Backend Connection Issues**
+```bash
+# Test backend service directly
+curl http://localhost:8001/api/v1/analytics/health
+
+# Check environment variables
+echo $ANALYTICS_SERVICE_URL
+```
+
+### **Common Development Issues**
+
+#### **GraphQL Code Generation**
 ```bash
 make clean
+make generate
+```
+
+#### **Dependency Issues**
+```bash
+make deps
+```
+
+#### **Development Tools Missing**
+```bash
+make install-tools
+```
+
+#### **Port Already in Use**
+```bash
+# Check what's using port 8080
+lsof -i :8080
+
+# Change port in .env file
+echo "PORT=8081" >> .env
+```
+
+### **Backend Service Issues**
+
+#### **Analytics Service Not Responding**
+```bash
+# Verify analytics service is running
+curl http://localhost:8001/api/v1/analytics/health
+
+# Check analytics service logs
+```
+
+#### **Invalid Controller IDs**
+```bash
+# Use getSupportedMetrics to see available data
+# Check your database for actual controller IDs
+```
+
+#### **Date Range Issues**
+```bash
+# Use recent date ranges
+# Verify your database has data for the specified timeframe
+```
+
+### **GraphQL Playground Issues**
+
+#### **Playground Not Loading**
+- Check `GRAPHQL_PLAYGROUND_ENABLED=true` in `.env`
+- Verify you're accessing `http://localhost:8080/playground`
+- Check browser console for errors
+
+#### **Schema Not Loading**
+- Restart the API Gateway service
+- Check for GraphQL generation errors in logs
+
+### **Getting Help**
+```bash
+make help         # Show all available commands
+make info         # Show project information
+```
 make generate
 ```
 

@@ -41,10 +41,10 @@ func LoadConfig() *Config {
 
 	config := &Config{
 		// Service URLs
-		AnalyticsServiceURL:       getEnv("ANALYTICS_SERVICE_URL", "http://localhost:8001"),
-		AuthServiceURL:            getEnv("AUTH_SERVICE_URL", "http://localhost:8002"),
-		DataManagementServiceURL:  getEnv("DATA_MANAGEMENT_SERVICE_URL", "http://localhost:8003"),
-		PlantManagementServiceURL: getEnv("PLANT_MANAGEMENT_SERVICE_URL", "http://localhost:8004"),
+		AnalyticsServiceURL:       getEnv("ANALYTICS_SERVICE_URL", "http://localhost:8000"),
+		AuthServiceURL:            getEnv("AUTH_SERVICE_URL", "http://localhost:8001"),
+		DataManagementServiceURL:  getEnv("DATA_MANAGEMENT_SERVICE_URL", "http://localhost:8002"),
+		PlantManagementServiceURL: getEnv("PLANT_MANAGEMENT_SERVICE_URL", "http://localhost:8003"),
 
 		// Server configuration
 		Port:    getEnv("PORT", "8080"),

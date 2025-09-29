@@ -1,0 +1,63 @@
+schema:
+  - metrics.graphqls
+
+# Generated files configuration
+exec:
+  filename: generated/generated.go
+model:
+  filename: generated/models_gen.go
+
+# Resolver configuration - local relative path
+resolver:
+  layout: single-file
+  dir: .
+  package: graphql
+  filename: resolver.go
+
+# Custom models and scalars configuration
+models:
+  UUID:
+    model:
+      - github.com/99designs/gqlgen/graphql.UUID
+  DateTime:
+    model:
+      - github.com/99designs/gqlgen/graphql.Time
+  JSON:
+    model:
+      - github.com/99designs/gqlgen/graphql.Map
+  
+  # Mapping of implemented analytics domain types
+  ## Metrics
+  AnalyticsFilter:
+    model:
+      - github.com/swarch-2f-rootly/rootly-apigateway/internal/domain.AnalyticsFilter
+  MetricResult:
+    model:
+      - github.com/swarch-2f-rootly/rootly-apigateway/internal/domain.MetricResult
+  AnalyticsReport:
+    model:
+      - github.com/swarch-2f-rootly/rootly-apigateway/internal/domain.AnalyticsReport
+  TrendDataPoint:
+    model:
+      - github.com/swarch-2f-rootly/rootly-apigateway/internal/domain.TrendDataPoint
+  TrendAnalysis:
+    model:
+      - github.com/swarch-2f-rootly/rootly-apigateway/internal/domain.TrendAnalysis
+  MultiMetricReport:
+    model:
+      - github.com/swarch-2f-rootly/rootly-apigateway/internal/domain.MultiReportResponse
+  AnalyticsHealthStatus:
+    model:
+      - github.com/swarch-2f-rootly/rootly-apigateway/internal/domain.AnalyticsHealthStatus
+  
+  # Input types
+  ## Metrics
+  MultiMetricReportInput:
+    model:
+      - github.com/swarch-2f-rootly/rootly-apigateway/internal/domain.MultiMetricReportRequest
+  TrendAnalysisInput:
+    model:
+      - github.com/swarch-2f-rootly/rootly-apigateway/internal/domain.TrendAnalysisRequest
+
+# INPUT TYPES ARE GENERATED AUTOMATICALLY
+# We don't need to map them here - gqlgen will create them automatically

@@ -1,0 +1,47 @@
+version: '3.8'
+
+services:
+  api-gateway:
+    build: .
+    ports:
+      - "8080:8080"
+    environment:
+      - PORT=8080
+      - AUTH_SERVICE_URL=http://host.docker.internal:8001
+      - PLANT_MANAGEMENT_SERVICE_URL=http://host.docker.internal:8004
+      - DATA_MANAGEMENT_SERVICE_URL=http://host.docker.internal:8003
+      - ANALYTICS_SERVICE_URL=http://host.docker.internal:8000
+      - CORS_ALLOW_ALL_ORIGINS=true
+      - GRAPHQL_PLAYGROUND_ENABLED=true
+    depends_on:
+      - auth-service
+      - plant-service
+      - analytics-service
+    networks:
+      - rootly-network
+
+  auth-service:
+    image: rootly-auth:latest
+    ports:
+      - "8001:8001"
+    networks:
+      - rootly-network
+
+  plant-service:
+    image: rootly-plants:latest
+    ports:
+      - "8004:8004"
+    networks:
+      - rootly-network
+
+  analytics-service:
+    image: rootly-analytics:latest
+    ports:
+      - "8000:8000"
+    networks:
+      - rootly-network
+
+networks:
+  rootly-network:
+    driver: bridge
+

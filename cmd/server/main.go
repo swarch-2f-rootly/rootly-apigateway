@@ -41,12 +41,15 @@ func main() {
 		corsConfig := cors.DefaultConfig()
 		corsConfig.AllowAllOrigins = true
 		corsConfig.AllowHeaders = []string{"Origin", "Content-Length", "Content-Type", "Authorization"}
-		corsConfig.AllowMethods = []string{"GET", "POST", "OPTIONS"}
+		corsConfig.AllowMethods = []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"}
 		router.Use(cors.New(corsConfig))
 	}
 
 	// Setup GraphQL with all dependencies
 	setupGraphQL(router, cfg, analyticsService)
+
+	// Setup REST Proxy
+	setupRESTProxy(router, cfg)
 
 	// Health check endpoint
 	router.GET("/health", func(c *gin.Context) {
@@ -66,6 +69,7 @@ func main() {
 	}
 
 	log.Printf("GraphQL endpoint available at http://localhost:%s/graphql", cfg.Port)
+	log.Printf("REST Proxy endpoints available at http://localhost:%s/api/v1/*", cfg.Port)
 	log.Printf("Health check available at http://localhost:%s/health", cfg.Port)
 
 	if err := router.Run(serverAddr); err != nil {
@@ -116,6 +120,42 @@ func setupGraphQL(router *gin.Engine, cfg *config.Config, analyticsService *serv
 	}
 
 	log.Printf("GraphQL server configured with analytics service")
+}
+
+// setupRESTProxy configures REST proxy routes to backend services
+func setupRESTProxy(router *gin.Engine, cfg *config.Config) {
+	// Create proxy handlers
+	proxyHandlers := httpAdapter.NewProxyHandlers(
+		cfg.AuthServiceURL,
+		cfg.PlantManagementServiceURL,
+		cfg.DataManagementServiceURL,
+	)
+
+	// Auth service routes
+	router.POST("/api/v1/auth/*path", proxyHandlers.ProxyToAuthService)
+	router.GET("/api/v1/auth/*path", proxyHandlers.ProxyToAuthService)
+	router.PUT("/api/v1/auth/*path", proxyHandlers.ProxyToAuthService)
+	router.DELETE("/api/v1/auth/*path", proxyHandlers.ProxyToAuthService)
+
+	// User management routes
+	router.POST("/api/v1/users", proxyHandlers.ProxyToAuthService)
+	router.GET("/api/v1/users/*path", proxyHandlers.ProxyToAuthService)
+	router.PUT("/api/v1/users/*path", proxyHandlers.ProxyToAuthService)
+	router.DELETE("/api/v1/users/*path", proxyHandlers.ProxyToAuthService)
+
+	// Plant management routes
+	router.POST("/api/v1/plants/*path", proxyHandlers.ProxyToPlantService)
+	router.GET("/api/v1/plants/*path", proxyHandlers.ProxyToPlantService)
+	router.PUT("/api/v1/plants/*path", proxyHandlers.ProxyToPlantService)
+	router.DELETE("/api/v1/plants/*path", proxyHandlers.ProxyToPlantService)
+
+	// Device management routes
+	router.POST("/api/v1/devices/*path", proxyHandlers.ProxyToPlantService)
+	router.GET("/api/v1/devices/*path", proxyHandlers.ProxyToPlantService)
+	router.PUT("/api/v1/devices/*path", proxyHandlers.ProxyToPlantService)
+	router.DELETE("/api/v1/devices/*path", proxyHandlers.ProxyToPlantService)
+
+	log.Printf("REST Proxy configured for auth and plant services")
 }
 
 // ginHandler converts http.Handler to gin.HandlerFunc

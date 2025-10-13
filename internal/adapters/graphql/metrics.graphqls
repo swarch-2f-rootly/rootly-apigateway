@@ -52,6 +52,19 @@ input TrendAnalysisInput {
     interval: String!
 }
 
+"""
+Input for historical measurements query
+Based on frontend requirements for device data
+"""
+input HistoricalQueryInput {
+    controllerId: String!
+    parameter: String!
+    startTime: String!
+    endTime: String
+    limit: Int
+    sensorId: String
+}
+
 # ========================================
 # DOMAIN TYPES
 # Domain types for analytics service
@@ -145,6 +158,29 @@ type AnalyticsHealthStatus {
     timestamp: DateTime!
 }
 
+"""
+Individual historical measurement data point
+Based on frontend requirements for device data
+"""
+type HistoricalMeasurement {
+    timestamp: String!
+    controllerId: String!
+    parameter: String!
+    value: Float!
+    sensorId: String!
+}
+
+"""
+Response for historical measurements query
+Based on frontend requirements for device data
+"""
+type HistoricalMeasurementsResponse {
+    dataPoints: [HistoricalMeasurement!]!
+    generatedAt: String!
+    totalPoints: Int!
+    filtersApplied: HistoricalQueryInput!
+}
+
 # ========================================
 # QUERIES
 # Queries for analytics service
@@ -184,6 +220,12 @@ type Query {
     Endpoint: GET /api/v1/analytics/health
     """
     getAnalyticsHealth: AnalyticsHealthStatus!
+
+    """
+    Get historical measurements for a specific device and parameter
+    Based on frontend requirements for device data visualization
+    """
+    getHistoricalMeasurements(input: HistoricalQueryInput!): HistoricalMeasurementsResponse!
 }
 
 # ========================================

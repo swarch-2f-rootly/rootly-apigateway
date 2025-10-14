@@ -1,0 +1,168 @@
+# Rootly API Gateway Configuration
+server:
+  host: "0.0.0.0"
+  port: 8080
+  read_timeout: "30s"
+  write_timeout: "30s"
+  endpoints:
+    # GraphQL endpoint (local schema)
+    - path: "/graphql"
+      method: "POST"
+      mode: "graphql"
+      strategy: "local_schema"
+      auth_required: true
+
+    # GraphQL proxy to analytics service
+    - path: "/graphql/analytics"
+      method: "POST"
+      mode: "graphql"
+      strategy: "graphql_proxy"
+      upstream: "analytics"
+      target_path: "/graphql"
+      auth_required: true
+      allow_all_origins: true
+  allowed_origins: []
+  allowed_methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
+  allowed_headers: ["Origin", "Content-Length", "Content-Type", "Authorization"]
+
+logging:
+  level: "info"
+  format: "json"
+
+# Service endpoints (matching docker-compose.yml)
+services:
+  analytics:
+    url: "http://be-analytics:8000"
+    timeout: "10s"
+  auth:
+    url: "http://be-authentication-and-roles:8000"
+    timeout: "10s"
+  data_management:
+    url: "http://be-data-management:8002"
+    timeout: "10s"
+  plant_management:
+    url: "http://be-user-plant-management:8000"
+    timeout: "10s"
+
+# Routes configuration
+routes:
+  # Analytics service routes
+  - path: "/api/v1/analytics/health"
+    method: "GET"
+    mode: "proxy"
+    upstream: "analytics"
+    target_path: "/health"
+    auth_required: false
+    
+  - path: "/api/v1/analytics/*"
+    method: "*"
+    mode: "proxy"
+    upstream: "analytics"
+    target_path: "/*"
+    auth_required: true
+    
+  # Authentication service routes
+  - path: "/api/v1/auth/register"
+    method: "POST"
+    mode: "proxy"
+    upstream: "auth"
+    target_path: "/api/v1/auth/register"
+    auth_required: false
+    
+  - path: "/api/v1/auth/login"
+    method: "POST"
+    mode: "proxy"
+    upstream: "auth"
+    target_path: "/api/v1/auth/login"
+    auth_required: false
+    
+  - path: "/api/v1/auth/*"
+    method: "*"
+    mode: "proxy"
+    upstream: "auth"
+    target_path: "/api/v1/auth/*"
+    auth_required: true
+    
+  # Data management service routes
+  - path: "/api/v1/data/*"
+    method: "*"
+    mode: "proxy"
+    upstream: "data_management"
+    target_path: "/*"
+    auth_required: true
+    
+  # Plant management service routes
+  - path: "/api/v1/plants/*"
+    method: "*"
+    mode: "proxy"
+    upstream: "plant_management"
+    target_path: "/*"
+    auth_required: true
+    
+  # Dashboard orchestration (aggregates data from multiple services)
+  - path: "/api/v1/dashboard"
+    method: "GET"
+    mode: "logic"
+    strategy: "dashboard_orchestrator"
+    auth_required: true
+    upstreams:
+      - service: "analytics"
+        endpoint: "/api/v1/metrics/summary"
+      - service: "plant_management"
+        endpoint: "/api/v1/plants/summary"
+      - service: "auth"
+        endpoint: "/api/v1/users/me"
+        
+  - path: "/api/v1/plants/{id}/full-report"
+    method: "GET"
+    mode: "logic"
+    strategy: "plant_full_report"
+    auth_required: true
+    upstreams:
+      - service: "plant_management"
+        endpoint: "/api/v1/plants/{id}"
+      - service: "analytics"
+        endpoint: "/api/v1/analytics/plants/{id}"
+      - service: "data_management"
+        endpoint: "/api/v1/data/plants/{id}"
+
+  # GraphQL mode
+  - path: "/graphql"
+    method: "POST"
+    mode: "graphql"
+    strategy: "local_schema"
+    auth_required: false
+    
+  - path: "/graphql-proxy"
+    method: "POST"
+    mode: "graphql"
+    strategy: "graphql_proxy"
+    upstream: "analytics"
+    target_path: "/graphql"
+    auth_required: false
+
+# Authentication configuration
+auth:
+  api_key_header: "X-API-Key"
+  jwt_secret: "your-secret-key"
+  jwt_expiration: "24h"
+
+# Strategy configurations
+strategies:
+  dashboard_orchestrator:
+    timeout: "15s"
+    parallel_requests: true
+    failure_policy: "partial_success"
+    
+  plant_full_report:
+    timeout: "20s"
+    parallel_requests: true
+    failure_policy: "fail_fast"
+    
+  local_schema:
+    introspection_enabled: true
+    playground_enabled: true
+    
+  proxy:
+    preserve_headers: true
+    timeout: "30s"

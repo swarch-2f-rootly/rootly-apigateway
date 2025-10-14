@@ -2,6 +2,7 @@ package graphql
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
@@ -88,6 +89,15 @@ func (r *multiMetricReportResolver) Reports(ctx context.Context, obj *domain.Mul
 
 // GetSingleMetricReport is the resolver for the getSingleMetricReport field.
 func (r *queryResolver) GetSingleMetricReport(ctx context.Context, metricName string, controllerID string, filters *generated.AnalyticsFilterInput) (*domain.AnalyticsReport, error) {
+	// Validate input parameters to prevent 400 errors
+	if metricName == "" {
+		return nil, fmt.Errorf("metricName cannot be empty")
+	}
+
+	if controllerID == "" {
+		return nil, fmt.Errorf("controllerID cannot be empty")
+	}
+
 	// Convert GraphQL input to domain filters
 	var domainFilters *domain.AnalyticsFilter
 	if filters != nil {
@@ -103,6 +113,27 @@ func (r *queryResolver) GetSingleMetricReport(ctx context.Context, metricName st
 
 // GetMultiMetricReport is the resolver for the getMultiMetricReport field.
 func (r *queryResolver) GetMultiMetricReport(ctx context.Context, input domain.MultiMetricReportRequest) (*domain.MultiReportResponse, error) {
+	// Validate input parameters to prevent 400 errors
+	if len(input.Controllers) == 0 {
+		// Return empty response instead of error for empty controllers
+		return &domain.MultiReportResponse{
+			GeneratedAt:      time.Now(),
+			TotalControllers: 0,
+			TotalMetrics:     0,
+			Reports:          make(map[string]domain.AnalyticsReport),
+		}, nil
+	}
+
+	if len(input.Metrics) == 0 {
+		// Return empty response instead of error for empty metrics
+		return &domain.MultiReportResponse{
+			GeneratedAt:      time.Now(),
+			TotalControllers: 0,
+			TotalMetrics:     0,
+			Reports:          make(map[string]domain.AnalyticsReport),
+		}, nil
+	}
+
 	return r.analyticsService.GetMultiMetricReport(ctx, input)
 }
 

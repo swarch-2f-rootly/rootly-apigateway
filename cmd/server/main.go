@@ -3,124 +3,175 @@ package main
 import (
 	"context"
 	"fmt"
-	"log"
 	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
-	"github.com/99designs/gqlgen/graphql/handler"
-	"github.com/99designs/gqlgen/graphql/handler/extension"
-	"github.com/99designs/gqlgen/graphql/handler/transport"
-	"github.com/99designs/gqlgen/graphql/playground"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
-	"github.com/swarch-2f-rootly/rootly-apigateway/internal/adapters/graphql"
-	"github.com/swarch-2f-rootly/rootly-apigateway/internal/adapters/graphql/generated"
+	
+	"github.com/swarch-2f-rootly/rootly-apigateway/internal/adapters/auth"
 	httpAdapter "github.com/swarch-2f-rootly/rootly-apigateway/internal/adapters/http"
+	"github.com/swarch-2f-rootly/rootly-apigateway/internal/adapters/logger"
 	"github.com/swarch-2f-rootly/rootly-apigateway/internal/config"
+	"github.com/swarch-2f-rootly/rootly-apigateway/internal/core/ports"
 	"github.com/swarch-2f-rootly/rootly-apigateway/internal/core/services"
+	"github.com/swarch-2f-rootly/rootly-apigateway/internal/core/services/strategies"
 )
 
 func main() {
 	// Load configuration
 	cfg := config.LoadConfig()
 
-	// Initialize dependencies using dependency injection
-	analyticsClient := httpAdapter.NewAnalyticsHTTPClient(cfg.AnalyticsServiceURL)
-	analyticsService := services.NewAnalyticsService(analyticsClient)
+	// Initialize logger
+	logger := logger.NewLogger(cfg.Logging.Level, cfg.Logging.Format, "api-gateway")
+	logger.Info("Starting Rootly API Gateway", map[string]interface{}{
+		"version": "1.0.0",
+		"port":    cfg.Server.Port,
+		"routes":  len(cfg.Routes),
+	})
 
-	// Initialize Gin router
-	gin.SetMode(cfg.GinMode)
+	// Initialize HTTP client
+	httpClient := &http.Client{
+		Timeout: 30 * time.Second,
+	}
+
+	// Initialize auth service
+	authService := auth.NewAuthService(
+		cfg.Auth.JWTSecret,
+		cfg.Auth.JWTExpiration,
+		logger,
+	)
+
+	// Initialize config provider
+	configProvider := httpAdapter.NewConfigProvider(cfg, logger)
+
+	// Initialize strategy manager
+	strategyManager := services.NewStrategyManager(logger)
+
+	// Register strategies
+	registerStrategies(strategyManager, logger)
+
+	// Initialize gateway service
+	gatewayService := services.NewGatewayService(
+		strategyManager,
+		nil, // Service orchestrator - could be implemented separately
+		authService,
+		logger,
+		httpClient,
+		configProvider,
+	)
+
+	// Initialize HTTP handler
+	gatewayHandler := httpAdapter.NewGatewayHandler(
+		gatewayService,
+		configProvider,
+		logger,
+	)
+
+	// Setup Gin router
+	gin.SetMode(func() string {
+		if cfg.Logging.Level == "debug" {
+			return gin.DebugMode
+		}
+		return gin.ReleaseMode
+	}())
+
 	router := gin.New()
 
-	// Add middlewares
+	// Add middleware
 	router.Use(gin.Logger())
 	router.Use(gin.Recovery())
 
 	// Setup CORS
-	if cfg.CORSAllowAllOrigins {
+	if cfg.CORS.AllowAllOrigins {
 		corsConfig := cors.DefaultConfig()
 		corsConfig.AllowAllOrigins = true
-		corsConfig.AllowHeaders = []string{"Origin", "Content-Length", "Content-Type", "Authorization"}
-		corsConfig.AllowMethods = []string{"GET", "POST", "OPTIONS"}
+		corsConfig.AllowHeaders = cfg.CORS.AllowedHeaders
+		corsConfig.AllowMethods = cfg.CORS.AllowedMethods
+		router.Use(cors.New(corsConfig))
+	} else if len(cfg.CORS.AllowedOrigins) > 0 {
+		corsConfig := cors.DefaultConfig()
+		corsConfig.AllowOrigins = cfg.CORS.AllowedOrigins
+		corsConfig.AllowHeaders = cfg.CORS.AllowedHeaders
+		corsConfig.AllowMethods = cfg.CORS.AllowedMethods
 		router.Use(cors.New(corsConfig))
 	}
 
-	// Setup GraphQL with all dependencies
-	setupGraphQL(router, cfg, analyticsService)
+	// Register routes
+	gatewayHandler.RegisterRoutes(router)
 
-	// Health check endpoint
-	router.GET("/health", func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{
-			"status":  "healthy",
-			"service": "rootly-apigateway",
-			"version": "1.0.0",
+	// Setup server
+	server := &http.Server{
+		Addr:         fmt.Sprintf("%s:%d", cfg.Server.Host, cfg.Server.Port),
+		Handler:      router,
+		ReadTimeout:  cfg.Server.ReadTimeout,
+		WriteTimeout: cfg.Server.WriteTimeout,
+	}
+
+	// Start server in a goroutine
+	go func() {
+		logger.Info("Server starting", map[string]interface{}{
+			"address": server.Addr,
 		})
+		
+		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			logger.Error("Server startup failed", err, map[string]interface{}{
+				"address": server.Addr,
+			})
+			os.Exit(1)
+		}
+	}()
+
+	logger.Info("API Gateway started successfully", map[string]interface{}{
+		"address":     server.Addr,
+		"routes":      len(cfg.Routes),
+		"services":    len(cfg.Services),
+		"strategies":  len(strategyManager.ListStrategies()),
 	})
 
-	// Start server
-	serverAddr := fmt.Sprintf(":%s", cfg.Port)
-	log.Printf("API Gateway starting on port %s", cfg.Port)
+	// Wait for interrupt signal to gracefully shutdown the server
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	<-quit
 
-	if cfg.GraphQLPlaygroundEnabled {
-		log.Printf("GraphQL Playground available at http://localhost:%s/playground", cfg.Port)
+	logger.Info("Shutting down server...", nil)
+
+	// Give outstanding requests 30 seconds to complete
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	if err := server.Shutdown(ctx); err != nil {
+		logger.Error("Server forced to shutdown", err, nil)
+		os.Exit(1)
 	}
 
-	log.Printf("GraphQL endpoint available at http://localhost:%s/graphql", cfg.Port)
-	log.Printf("Health check available at http://localhost:%s/health", cfg.Port)
-
-	if err := router.Run(serverAddr); err != nil {
-		log.Fatalf("Failed to start server: %v", err)
-	}
+	logger.Info("Server exited", nil)
 }
 
-// setupGraphQL configures GraphQL handler and playground with all dependencies
-func setupGraphQL(router *gin.Engine, cfg *config.Config, analyticsService *services.AnalyticsService) {
-	// Create GraphQL resolver with injected dependencies
-	resolver := graphql.NewResolver(analyticsService)
+// registerStrategies registers all available strategies
+func registerStrategies(strategyManager *services.StrategyManager, logger ports.Logger) {
+	// Register proxy strategy
+	proxyStrategy := strategies.NewProxyStrategy()
+	strategyManager.RegisterStrategy(proxyStrategy.GetName(), proxyStrategy)
 
-	// Create GraphQL server configuration
-	graphqlConfig := generated.Config{
-		Resolvers: resolver,
-	}
+	// Register business logic strategies
+	dashboardStrategy := strategies.NewDashboardOrchestratorStrategy()
+	strategyManager.RegisterStrategy(dashboardStrategy.GetName(), dashboardStrategy)
 
-	// Create GraphQL server with configuration
-	srv := handler.NewDefaultServer(generated.NewExecutableSchema(graphqlConfig))
+	plantReportStrategy := strategies.NewPlantFullReportStrategy()
+	strategyManager.RegisterStrategy(plantReportStrategy.GetName(), plantReportStrategy)
 
-	// Configure GraphQL server options
-	srv.AddTransport(transport.Websocket{KeepAlivePingInterval: 10 * time.Second})
-	srv.AddTransport(transport.Options{})
-	srv.AddTransport(transport.GET{})
-	srv.AddTransport(transport.POST{})
-	srv.AddTransport(transport.MultipartForm{})
+	// Register GraphQL strategies
+	localSchemaStrategy := strategies.NewLocalSchemaStrategy()
+	strategyManager.RegisterStrategy(localSchemaStrategy.GetName(), localSchemaStrategy)
 
-	// Add recovery middleware
-	srv.SetRecoverFunc(func(ctx context.Context, err interface{}) error {
-		log.Printf("GraphQL panic recovered: %v", err)
-		return fmt.Errorf("internal server error")
+	proxyGraphQLStrategy := strategies.NewGraphQLProxyStrategy()
+	strategyManager.RegisterStrategy("graphql_proxy", proxyGraphQLStrategy)
+
+	logger.Info("Strategies registered", map[string]interface{}{
+		"strategies": strategyManager.ListStrategies(),
 	})
-
-	// Enable introspection if configured
-	if cfg.GraphQLIntrospectionEnabled {
-		srv.Use(extension.Introspection{})
-	}
-
-	// GraphQL endpoint - accepts both GET and POST
-	router.POST("/graphql", ginHandler(srv))
-	router.GET("/graphql", ginHandler(srv))
-
-	// GraphQL Playground (only if enabled)
-	if cfg.GraphQLPlaygroundEnabled {
-		playgroundHandler := playground.Handler("GraphQL Playground", "/graphql")
-		router.GET("/playground", ginHandler(playgroundHandler))
-		log.Printf("GraphQL Playground enabled at /playground")
-	}
-
-	log.Printf("GraphQL server configured with analytics service")
-}
-
-// ginHandler converts http.Handler to gin.HandlerFunc
-func ginHandler(h http.Handler) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		h.ServeHTTP(c.Writer, c.Request)
-	}
 }

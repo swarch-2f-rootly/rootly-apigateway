@@ -1,0 +1,91 @@
+# ⚠️ DEPRECATED - DO NOT USE FOR PRODUCTION
+# 
+# This file is kept for backwards compatibility only.
+# 
+# For TESTING: Use docker-compose.test.yml (includes mock services)
+#   docker-compose -f docker-compose.test.yml up
+#
+# For PRODUCTION: Use the centralized docker-compose.yml in rootly-deploy repository
+#   cd ../rootly-deploy && docker-compose up
+#
+# See README.md for more information.
+
+version: '3.8'
+
+services:
+  # API Gateway
+  api-gateway:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      - GIN_MODE=release
+      - LOG_LEVEL=info
+      - CONFIG_FILE=/app/config.yaml
+    volumes:
+      - ./config.yaml:/app/config.yaml
+    depends_on:
+      - users-service
+      - analytics-service
+      - payments-service
+      - plant-management-service
+    networks:
+      - rootly-network
+
+  # Mock Users Service
+  users-service:
+    build:
+      context: ./mock-services
+      dockerfile: Dockerfile
+    ports:
+      - "8001:8000"
+    environment:
+      - SERVICE_NAME=users-service
+      - PORT=8000
+    networks:
+      - rootly-network
+
+  # Mock Analytics Service  
+  analytics-service:
+    build:
+      context: ./mock-services
+      dockerfile: Dockerfile
+    ports:
+      - "8002:8000"
+    environment:
+      - SERVICE_NAME=analytics-service
+      - PORT=8000
+    networks:
+      - rootly-network
+
+  # Mock Payments Service
+  payments-service:
+    build:
+      context: ./mock-services
+      dockerfile: Dockerfile
+    ports:
+      - "8003:8000"
+    environment:
+      - SERVICE_NAME=payments-service
+      - PORT=8000
+    networks:
+      - rootly-network
+
+  # Mock Plant Management Service
+  plant-management-service:
+    build:
+      context: ./mock-services
+      dockerfile: Dockerfile
+    ports:
+      - "8004:8000"
+    environment:
+      - SERVICE_NAME=plant-management-service
+      - PORT=8000
+    networks:
+      - rootly-network
+
+networks:
+  rootly-network:
+    driver: bridge

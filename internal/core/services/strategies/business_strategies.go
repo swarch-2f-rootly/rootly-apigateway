@@ -40,7 +40,7 @@ func (ps *ProxyStrategy) GetName() string {
 // Execute executes the proxy strategy
 func (ps *ProxyStrategy) Execute(ctx context.Context, params ports.StrategyParams) (interface{}, error) {
 	routeConfig := params.RouteConfig
-	
+
 	// Get target service info
 	serviceInfo, exists := params.Services[routeConfig.Upstream]
 	if !exists {
@@ -55,13 +55,13 @@ func (ps *ProxyStrategy) Execute(ctx context.Context, params ports.StrategyParam
 
 	// Replace path parameters
 	targetPath = ps.replacePathParameters(targetPath, params.Request.URL.Path, routeConfig.Path)
-	
+
 	targetURL := serviceInfo.URL + targetPath
 	if params.Request.URL.RawQuery != "" {
 		targetURL += "?" + params.Request.URL.RawQuery
 	}
 
-	params.Logger.Debug("Proxying request", map[string]interface{}{
+	params.Logger.Info("🌐 Proxying request", map[string]interface{}{
 		"original_url": params.Request.URL.String(),
 		"target_url":   targetURL,
 		"method":       params.Request.Method,
@@ -105,7 +105,7 @@ func (ps *ProxyStrategy) Execute(ctx context.Context, params ports.StrategyParam
 		return nil, fmt.Errorf("proxy request failed: %w", err)
 	}
 
-	params.Logger.Debug("Proxy request completed", map[string]interface{}{
+	params.Logger.Info("📥 Proxy response received", map[string]interface{}{
 		"status_code": resp.StatusCode,
 		"target_url":  targetURL,
 	})
@@ -118,6 +118,33 @@ func (ps *ProxyStrategy) replacePathParameters(targetPath, requestPath, routePat
 	routeParts := strings.Split(strings.Trim(routePath, "/"), "/")
 	requestParts := strings.Split(strings.Trim(requestPath, "/"), "/")
 
+	// Handle wildcard routes (ending with *)
+	if len(routeParts) > 0 && routeParts[len(routeParts)-1] == "*" {
+		routePrefix := routeParts[:len(routeParts)-1]
+		if len(requestParts) >= len(routePrefix) {
+			// Replace parameters in the prefix
+			result := targetPath
+			for i, routePart := range routePrefix {
+				if strings.HasPrefix(routePart, "{") && strings.HasSuffix(routePart, "}") {
+					paramValue := requestParts[i]
+					result = strings.ReplaceAll(result, routePart, paramValue)
+				}
+			}
+
+			// Handle wildcard (*) in target path
+			if strings.Contains(result, "*") {
+				// Extract the remaining path after the prefix
+				remainingParts := requestParts[len(routePrefix):]
+				remainingPath := strings.Join(remainingParts, "/")
+				result = strings.ReplaceAll(result, "*", remainingPath)
+			}
+
+			return result
+		}
+		return targetPath
+	}
+
+	// Handle exact match routes
 	if len(routeParts) != len(requestParts) {
 		return targetPath
 	}
@@ -379,8 +406,8 @@ func (pfrs *PlantFullReportStrategy) Execute(ctx context.Context, params ports.S
 		"plant_id":  plantID,
 		"timestamp": time.Now().UTC().Format(time.RFC3339),
 		"report": map[string]interface{}{
-			"plant_info": results["plant_management"],
-			"analytics":  results["analytics"],
+			"plant_info":   results["plant_management"],
+			"analytics":    results["analytics"],
 			"measurements": results["data_management"],
 		},
 	}

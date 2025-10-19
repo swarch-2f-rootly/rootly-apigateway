@@ -2,6 +2,7 @@ package http
 
 import (
 	"context"
+	"io"
 	"net/http"
 	"strings"
 	"time"
@@ -16,9 +17,9 @@ import (
 
 // GatewayHandler handles HTTP requests for the API Gateway
 type GatewayHandler struct {
-	gatewayService  *services.GatewayService
-	configProvider  ports.ConfigProvider
-	logger          ports.Logger
+	gatewayService *services.GatewayService
+	configProvider ports.ConfigProvider
+	logger         ports.Logger
 }
 
 // NewGatewayHandler creates a new gateway handler
@@ -65,10 +66,40 @@ func (gh *GatewayHandler) HandleRequest(c *gin.Context) {
 
 	// Extract body for POST/PUT requests
 	if c.Request.Method == "POST" || c.Request.Method == "PUT" || c.Request.Method == "PATCH" {
-		if c.Request.Body != nil {
-			var body interface{}
-			if err := c.ShouldBindJSON(&body); err == nil {
-				reqCtx.Body = body
+		contentType := strings.ToLower(c.GetHeader("Content-Type"))
+
+		// Only parse as JSON if content-type is application/json
+		if strings.Contains(contentType, "application/json") {
+			if c.Request.Body != nil {
+				var body interface{}
+				if err := c.ShouldBindJSON(&body); err == nil {
+					reqCtx.Body = body
+				}
+			}
+		} else if strings.Contains(contentType, "multipart/form-data") {
+			// For multipart/form-data, store the raw body and mark it for special handling
+			if c.Request.Body != nil {
+				bodyBytes, err := io.ReadAll(c.Request.Body)
+				if err != nil {
+					gh.logger.Error("Failed to read multipart body", err, map[string]interface{}{
+						"request_id": requestID,
+					})
+				} else {
+					reqCtx.Body = bodyBytes
+					reqCtx.Headers["x-multipart-body"] = "true"
+				}
+			}
+		} else {
+			// For other content types, try to read the body as raw bytes if it's not JSON
+			if c.Request.Body != nil && c.Request.ContentLength > 0 {
+				bodyBytes, err := io.ReadAll(c.Request.Body)
+				if err != nil {
+					gh.logger.Error("Failed to read raw body", err, map[string]interface{}{
+						"request_id": requestID,
+					})
+				} else {
+					reqCtx.Body = bodyBytes
+				}
 			}
 		}
 	}
@@ -91,7 +122,7 @@ func (gh *GatewayHandler) HandleRequest(c *gin.Context) {
 			"request_id": requestID,
 			"duration":   time.Since(startTime).Milliseconds(),
 		})
-		
+
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error":      "Internal server error",
 			"request_id": requestID,
@@ -145,7 +176,7 @@ func (gh *GatewayHandler) HandleMetrics(c *gin.Context) {
 	metrics := gin.H{
 		"timestamp": time.Now().UTC().Format(time.RFC3339),
 		"gateway": gin.H{
-			"uptime": time.Since(time.Now()).String(), // This should be actual uptime
+			"uptime":  time.Since(time.Now()).String(), // This should be actual uptime
 			"version": "1.0.0",
 		},
 		"requests": gin.H{
@@ -167,9 +198,11 @@ func (gh *GatewayHandler) RegisterRoutes(router *gin.Engine) {
 	// Operational endpoints (infrastructure, no versioning)
 	// These are used by monitoring systems, load balancers, and orchestrators
 	router.GET("/health", gh.HandleHealth)   // Gateway health check
+	router.HEAD("/health", gh.HandleHealth)  // Gateway health check (HEAD)
 	router.GET("/healthz", gh.HandleHealth)  // Kubernetes-style alias
+	router.HEAD("/healthz", gh.HandleHealth) // Kubernetes-style alias (HEAD)
 	router.GET("/metrics", gh.HandleMetrics) // Prometheus metrics
-	
+
 	// Business API routes (versioned, dynamic routing from config.yaml)
 	// Pattern: /api/v1/* → processed by NoRoute handler
 	router.NoRoute(gh.HandleRequest)
@@ -251,14 +284,47 @@ func (cp *ConfigProvider) ReloadConfig() error {
 
 // matchRoute checks if a route matches the given path and method
 func (cp *ConfigProvider) matchRoute(route config.RouteConfig, path string, method string) bool {
-	if route.Method != method {
+	// Check method first
+	if route.Method != method && route.Method != "*" {
 		return false
 	}
 
-	// Simple path matching with parameter support
+	// Simple path matching with wildcard support
 	routeParts := strings.Split(strings.Trim(route.Path, "/"), "/")
 	pathParts := strings.Split(strings.Trim(path, "/"), "/")
 
+	cp.logger.Debug("Matching route", map[string]interface{}{
+		"route_path":   route.Path,
+		"request_path": path,
+		"route_parts":  routeParts,
+		"path_parts":   pathParts,
+	})
+
+	// If route ends with wildcard (*), it should match any path that starts with the route prefix
+	if len(routeParts) > 0 && routeParts[len(routeParts)-1] == "*" {
+		// Remove the wildcard from route parts for comparison
+		routePrefix := routeParts[:len(routeParts)-1]
+
+		// Path must have at least as many parts as the route prefix (can be equal or more)
+		if len(pathParts) < len(routePrefix) {
+			return false
+		}
+
+		// Check that all prefix parts match
+		for i, routePart := range routePrefix {
+			if strings.HasPrefix(routePart, "{") && strings.HasSuffix(routePart, "}") {
+				// This is a path parameter, skip validation
+				continue
+			}
+			if routePart != pathParts[i] {
+				return false
+			}
+		}
+
+		return true
+	}
+
+	// Exact match for non-wildcard routes
 	if len(routeParts) != len(pathParts) {
 		return false
 	}

@@ -197,7 +197,7 @@ func (c *Config) populateDefaults() {
 		c.Auth.APIKeyHeader = getEnv("API_KEY_HEADER", "X-API-Key")
 	}
 	if c.Auth.JWTSecret == "" {
-		c.Auth.JWTSecret = getEnv("JWT_SECRET", "your-secret-key")
+		c.Auth.JWTSecret = getEnv("JWT_SECRET_KEY", "test-jwt-secret-key-for-development-only-32-chars-minimum")
 	}
 	if c.Auth.JWTExpiration == 0 {
 		c.Auth.JWTExpiration = getDurationEnv("JWT_EXPIRATION", "24h")

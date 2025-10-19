@@ -88,7 +88,7 @@ routes:
     method: "*"
     mode: "proxy"
     upstream: "data_management"
-    target_path: "/*"
+    target_path: "/api/v1/data/*"
     auth_required: true
     
   # Plant management service routes
@@ -96,7 +96,15 @@ routes:
     method: "*"
     mode: "proxy"
     upstream: "plant_management"
-    target_path: "/*"
+    target_path: "/api/v1/plants/*"
+    auth_required: true
+
+  # Device management service routes (part of plant management)
+  - path: "/api/v1/devices/*"
+    method: "*"
+    mode: "proxy"
+    upstream: "plant_management"
+    target_path: "/api/v1/devices/*"
     auth_required: true
     
   # Dashboard orchestration (aggregates data from multiple services)
@@ -144,7 +152,6 @@ routes:
 # Authentication configuration
 auth:
   api_key_header: "X-API-Key"
-  jwt_secret: "your-secret-key"
   jwt_expiration: "24h"
 
 # Strategy configurations

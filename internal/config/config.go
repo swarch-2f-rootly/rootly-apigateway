@@ -26,6 +26,8 @@ type CORSConfig struct {
 	AllowedOrigins  []string `yaml:"allowed_origins"`
 	AllowedMethods  []string `yaml:"allowed_methods"`
 	AllowedHeaders  []string `yaml:"allowed_headers"`
+	AllowCredentials bool    `yaml:"allow_credentials,omitempty"`
+	MaxAge          int      `yaml:"max_age,omitempty"`
 }
 
 // LoggingConfig holds logging configuration

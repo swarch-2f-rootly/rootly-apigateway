@@ -5,12 +5,15 @@ server:
   read_timeout: "30s"
   write_timeout: "30s"
   endpoints:
-    # GraphQL endpoint (local schema)
+    # GraphQL endpoint (proxy to plant management service)
     - path: "/graphql"
       method: "POST"
       mode: "graphql"
-      strategy: "local_schema"
-      auth_required: true
+      strategy: "graphql_proxy"
+      upstream: "plant_management"
+      target_path: "/graphql"
+      auth_required: false
+
 
     # GraphQL proxy to analytics service
     - path: "/graphql/analytics"
@@ -20,10 +23,13 @@ server:
       upstream: "analytics"
       target_path: "/graphql"
       auth_required: true
-      allow_all_origins: true
-  allowed_origins: []
-  allowed_methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
-  allowed_headers: ["Origin", "Content-Length", "Content-Type", "Authorization"]
+cors:
+  allow_all_origins: true
+  allowed_origins: ["http://localhost:3001", "http://localhost:3000"]
+  allowed_methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"]
+  allowed_headers: ["Origin", "Content-Length", "Content-Type", "Authorization", "X-Requested-With", "Accept", "Cache-Control"]
+  allow_credentials: true
+  max_age: 86400
 
 logging:
   level: "info"
@@ -92,6 +98,41 @@ routes:
     auth_required: true
     
   # Plant management service routes
+  - path: "/api/v1/plants"
+    method: "OPTIONS"
+    mode: "proxy"
+    upstream: "plant_management"
+    target_path: "/api/v1/plants"
+    auth_required: false
+    
+  - path: "/api/v1/plants"
+    method: "*"
+    mode: "proxy"
+    upstream: "plant_management"
+    target_path: "/api/v1/plants"
+    auth_required: true
+    
+  - path: "/api/v1/plants/users"
+    method: "OPTIONS"
+    mode: "proxy"
+    upstream: "plant_management"
+    target_path: "/api/v1/plants/users"
+    auth_required: false
+    
+  - path: "/api/v1/plants/users"
+    method: "*"
+    mode: "proxy"
+    upstream: "plant_management"
+    target_path: "/api/v1/plants/users"
+    auth_required: true
+    
+  - path: "/api/v1/plants/users/{id}"
+    method: "GET"
+    mode: "proxy"
+    upstream: "plant_management"
+    target_path: "/api/v1/plants/users/{id}"
+    auth_required: true
+    
   - path: "/api/v1/plants/*"
     method: "*"
     mode: "proxy"
@@ -144,7 +185,7 @@ routes:
 # Authentication configuration
 auth:
   api_key_header: "X-API-Key"
-  jwt_secret: "your-secret-key"
+  jwt_secret: "test-jwt-secret-key-for-development-only-32-chars-minimum"
   jwt_expiration: "24h"
 
 # Strategy configurations

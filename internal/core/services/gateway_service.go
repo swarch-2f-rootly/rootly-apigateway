@@ -2,7 +2,9 @@ package services
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 
 	"github.com/swarch-2f-rootly/rootly-apigateway/internal/core/domain"
@@ -150,6 +152,7 @@ func (gs *GatewayService) handleProxyMode(ctx context.Context, reqCtx *domain.Re
 
 	// Execute proxy strategy
 	strategyParams := ports.StrategyParams{
+		Request:     reqCtx.Request,
 		RouteConfig: routeConfig,
 		Services: map[string]ports.ServiceInfo{
 			routeConfig.Upstream: *serviceInfo,
@@ -198,6 +201,7 @@ func (gs *GatewayService) handleLogicMode(ctx context.Context, reqCtx *domain.Re
 
 	// Execute logic strategy
 	strategyParams := ports.StrategyParams{
+		Request:     reqCtx.Request,
 		RouteConfig: routeConfig,
 		Services:    services,
 		UserInfo:    gs.convertUser(reqCtx.User),
@@ -236,6 +240,7 @@ func (gs *GatewayService) handleGraphQLMode(ctx context.Context, reqCtx *domain.
 
 	// Execute GraphQL strategy
 	strategyParams := ports.StrategyParams{
+		Request:     reqCtx.Request,
 		RouteConfig: routeConfig,
 		Services:    services,
 		UserInfo:    gs.convertUser(reqCtx.User),
@@ -280,11 +285,40 @@ func (gs *GatewayService) convertUser(user *domain.User) *ports.UserInfo {
 
 // convertHTTPResponse converts http.Response to domain.Response
 func (gs *GatewayService) convertHTTPResponse(httpResp *http.Response) (*domain.Response, error) {
-	// Implementation would depend on specific requirements
-	// For now, return a basic conversion
+	// Read and convert upstream response into a JSON-friendly structure
+	// Copy headers we care about (e.g., Content-Type)
+	headers := make(map[string]string)
+	if ct := httpResp.Header.Get("Content-Type"); ct != "" {
+		headers["Content-Type"] = ct
+	}
+
+	// Read full body
+	defer httpResp.Body.Close()
+	bodyBytes, err := io.ReadAll(httpResp.Body)
+	if err != nil {
+		return &domain.Response{
+			StatusCode: httpResp.StatusCode,
+			Headers:    headers,
+			Body:       map[string]string{"error": "failed to read upstream response"},
+		}, nil
+	}
+
+	var body interface{}
+	if len(bodyBytes) == 0 {
+		body = map[string]interface{}{}
+	} else {
+		// Try to parse as JSON; if it fails, return raw string
+		var jsonBody interface{}
+		if err := json.Unmarshal(bodyBytes, &jsonBody); err == nil {
+			body = jsonBody
+		} else {
+			body = string(bodyBytes)
+		}
+	}
+
 	return &domain.Response{
 		StatusCode: httpResp.StatusCode,
-		Headers:    make(map[string]string), // Convert from http.Header
-		Body:       httpResp.Body,
+		Headers:    headers,
+		Body:       body,
 	}, nil
 }

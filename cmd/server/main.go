@@ -11,7 +11,7 @@ import (
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
-	
+
 	"github.com/swarch-2f-rootly/rootly-apigateway/internal/adapters/auth"
 	httpAdapter "github.com/swarch-2f-rootly/rootly-apigateway/internal/adapters/http"
 	"github.com/swarch-2f-rootly/rootly-apigateway/internal/adapters/logger"
@@ -91,12 +91,16 @@ func main() {
 		corsConfig.AllowAllOrigins = true
 		corsConfig.AllowHeaders = cfg.CORS.AllowedHeaders
 		corsConfig.AllowMethods = cfg.CORS.AllowedMethods
+		corsConfig.AllowCredentials = cfg.CORS.AllowCredentials
+		corsConfig.MaxAge = time.Duration(cfg.CORS.MaxAge) * time.Second
 		router.Use(cors.New(corsConfig))
 	} else if len(cfg.CORS.AllowedOrigins) > 0 {
 		corsConfig := cors.DefaultConfig()
 		corsConfig.AllowOrigins = cfg.CORS.AllowedOrigins
 		corsConfig.AllowHeaders = cfg.CORS.AllowedHeaders
 		corsConfig.AllowMethods = cfg.CORS.AllowedMethods
+		corsConfig.AllowCredentials = cfg.CORS.AllowCredentials
+		corsConfig.MaxAge = time.Duration(cfg.CORS.MaxAge) * time.Second
 		router.Use(cors.New(corsConfig))
 	}
 
@@ -116,7 +120,7 @@ func main() {
 		logger.Info("Server starting", map[string]interface{}{
 			"address": server.Addr,
 		})
-		
+
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			logger.Error("Server startup failed", err, map[string]interface{}{
 				"address": server.Addr,
@@ -126,10 +130,10 @@ func main() {
 	}()
 
 	logger.Info("API Gateway started successfully", map[string]interface{}{
-		"address":     server.Addr,
-		"routes":      len(cfg.Routes),
-		"services":    len(cfg.Services),
-		"strategies":  len(strategyManager.ListStrategies()),
+		"address":    server.Addr,
+		"routes":     len(cfg.Routes),
+		"services":   len(cfg.Services),
+		"strategies": len(strategyManager.ListStrategies()),
 	})
 
 	// Wait for interrupt signal to gracefully shutdown the server

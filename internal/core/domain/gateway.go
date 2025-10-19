@@ -3,6 +3,7 @@ package domain
 import (
 	"errors"
 	"fmt"
+	"net/http"
 	"strings"
 	"time"
 )
@@ -85,6 +86,7 @@ type RequestContext struct {
 	Route       *Route                 `json:"route,omitempty"`
 	StartTime   time.Time              `json:"start_time"`
 	Metadata    map[string]interface{} `json:"metadata,omitempty"`
+	Request     *http.Request          `json:"-"`
 }
 
 // User represents an authenticated user

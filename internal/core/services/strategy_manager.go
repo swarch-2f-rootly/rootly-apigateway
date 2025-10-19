@@ -51,23 +51,33 @@ func (sm *StrategyManager) ExecuteStrategy(ctx context.Context, strategyName str
 		return nil, fmt.Errorf("strategy not found: %s", strategyName)
 	}
 
+	// Validar que params y Request no sean nil
+	if params.Request == nil {
+		return nil, fmt.Errorf("request is nil")
+	}
+
+	requestPath := ""
+	if params.Request.URL != nil {
+		requestPath = params.Request.URL.Path
+	}
+
 	sm.logger.Debug("Executing strategy", map[string]interface{}{
 		"strategy_name": strategyName,
-		"request_path":  params.Request.URL.Path,
+		"request_path":  requestPath,
 	})
 
 	result, err := strategy.Execute(ctx, params)
 	if err != nil {
 		sm.logger.Error("Strategy execution failed", err, map[string]interface{}{
 			"strategy_name": strategyName,
-			"request_path":  params.Request.URL.Path,
+			"request_path":  requestPath,
 		})
 		return nil, err
 	}
 
 	sm.logger.Debug("Strategy executed successfully", map[string]interface{}{
 		"strategy_name": strategyName,
-		"request_path":  params.Request.URL.Path,
+		"request_path":  requestPath,
 	})
 
 	return result, nil

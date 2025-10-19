@@ -1,5 +1,6 @@
 schema:
   - metrics.graphqls
+  - plants.graphqls
 
 # Generated files configuration
 exec:
@@ -58,6 +59,32 @@ models:
   TrendAnalysisInput:
     model:
       - github.com/swarch-2f-rootly/rootly-apigateway/internal/domain.TrendAnalysisRequest
+  
+  ## Plants
+  Plant:
+    model:
+      - github.com/swarch-2f-rootly/rootly-apigateway/internal/domain.Plant
+  PlantsResponse:
+    model:
+      - github.com/swarch-2f-rootly/rootly-apigateway/internal/domain.PlantsResponse
+  PlantResponse:
+    model:
+      - github.com/swarch-2f-rootly/rootly-apigateway/internal/domain.PlantResponse
+  PlantMutationResponse:
+    model:
+      - github.com/swarch-2f-rootly/rootly-apigateway/internal/domain.PlantMutationResponse
+  PlantDeleteResponse:
+    model:
+      - github.com/swarch-2f-rootly/rootly-apigateway/internal/domain.PlantDeleteResponse
+  CreatePlantInput:
+    model:
+      - github.com/swarch-2f-rootly/rootly-apigateway/internal/domain.CreatePlantRequest
+  UpdatePlantInput:
+    model:
+      - github.com/swarch-2f-rootly/rootly-apigateway/internal/domain.UpdatePlantRequest
+  PlantFilterInput:
+    model:
+      - github.com/swarch-2f-rootly/rootly-apigateway/internal/domain.PlantFilter
 
 # INPUT TYPES ARE GENERATED AUTOMATICALLY
 # We don't need to map them here - gqlgen will create them automatically

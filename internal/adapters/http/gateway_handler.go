@@ -1,7 +1,10 @@
 package http
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
+	"io"
 	"net/http"
 	"strings"
 	"time"
@@ -16,9 +19,9 @@ import (
 
 // GatewayHandler handles HTTP requests for the API Gateway
 type GatewayHandler struct {
-	gatewayService  *services.GatewayService
-	configProvider  ports.ConfigProvider
-	logger          ports.Logger
+	gatewayService *services.GatewayService
+	configProvider ports.ConfigProvider
+	logger         ports.Logger
 }
 
 // NewGatewayHandler creates a new gateway handler
@@ -47,6 +50,7 @@ func (gh *GatewayHandler) HandleRequest(c *gin.Context) {
 		Headers:   make(map[string]string),
 		Query:     make(map[string]string),
 		StartTime: startTime,
+		Request:   c.Request,
 	}
 
 	// Extract headers
@@ -66,9 +70,15 @@ func (gh *GatewayHandler) HandleRequest(c *gin.Context) {
 	// Extract body for POST/PUT requests
 	if c.Request.Method == "POST" || c.Request.Method == "PUT" || c.Request.Method == "PATCH" {
 		if c.Request.Body != nil {
-			var body interface{}
-			if err := c.ShouldBindJSON(&body); err == nil {
-				reqCtx.Body = body
+			// Read the body without consuming it
+			bodyBytes, err := c.GetRawData()
+			if err == nil && len(bodyBytes) > 0 {
+				var body interface{}
+				if err := json.Unmarshal(bodyBytes, &body); err == nil {
+					reqCtx.Body = body
+				}
+				// Restore the body for the strategy to read
+				c.Request.Body = io.NopCloser(bytes.NewReader(bodyBytes))
 			}
 		}
 	}
@@ -91,7 +101,7 @@ func (gh *GatewayHandler) HandleRequest(c *gin.Context) {
 			"request_id": requestID,
 			"duration":   time.Since(startTime).Milliseconds(),
 		})
-		
+
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error":      "Internal server error",
 			"request_id": requestID,
@@ -145,7 +155,7 @@ func (gh *GatewayHandler) HandleMetrics(c *gin.Context) {
 	metrics := gin.H{
 		"timestamp": time.Now().UTC().Format(time.RFC3339),
 		"gateway": gin.H{
-			"uptime": time.Since(time.Now()).String(), // This should be actual uptime
+			"uptime":  time.Since(time.Now()).String(), // This should be actual uptime
 			"version": "1.0.0",
 		},
 		"requests": gin.H{
@@ -169,7 +179,7 @@ func (gh *GatewayHandler) RegisterRoutes(router *gin.Engine) {
 	router.GET("/health", gh.HandleHealth)   // Gateway health check
 	router.GET("/healthz", gh.HandleHealth)  // Kubernetes-style alias
 	router.GET("/metrics", gh.HandleMetrics) // Prometheus metrics
-	
+
 	// Business API routes (versioned, dynamic routing from config.yaml)
 	// Pattern: /api/v1/* → processed by NoRoute handler
 	router.NoRoute(gh.HandleRequest)
@@ -251,7 +261,8 @@ func (cp *ConfigProvider) ReloadConfig() error {
 
 // matchRoute checks if a route matches the given path and method
 func (cp *ConfigProvider) matchRoute(route config.RouteConfig, path string, method string) bool {
-	if route.Method != method {
+	// Handle wildcard method (*) - matches any method
+	if route.Method != "*" && route.Method != method {
 		return false
 	}
 

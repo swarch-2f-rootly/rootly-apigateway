@@ -1,0 +1,134 @@
+# ========================================
+# PLANTS GRAPHQL SCHEMA
+# Schema for plant management operations
+# ========================================
+
+# ========================================
+# INPUT TYPES
+# ========================================
+
+"""
+Input for creating a new plant
+"""
+input CreatePlantInput {
+    name: String!
+    species: String!
+    description: String
+    user_id: String!
+    photo_filename: String
+}
+
+"""
+Input for updating an existing plant
+"""
+input UpdatePlantInput {
+    name: String
+    species: String
+    description: String
+    photo_filename: String
+}
+
+"""
+Input for filtering plants
+"""
+input PlantFilterInput {
+    user_id: String
+    species: String
+    name_contains: String
+    limit: Int
+    offset: Int
+}
+
+# ========================================
+# DOMAIN TYPES
+# ========================================
+
+"""
+Plant entity representing a monitored plant
+"""
+type Plant {
+    id: String!
+    name: String!
+    species: String!
+    description: String
+    user_id: String!
+    photo_filename: String
+    created_at: DateTime!
+    updated_at: DateTime!
+}
+
+"""
+Response for plant list queries
+"""
+type PlantsResponse {
+    plants: [Plant!]!
+    total: Int!
+    page: Int!
+    limit: Int!
+}
+
+"""
+Response for single plant query
+"""
+type PlantResponse {
+    plant: Plant
+}
+
+"""
+Response for plant mutations
+"""
+type PlantMutationResponse {
+    success: Boolean!
+    message: String!
+    plant: Plant
+}
+
+"""
+Response for plant deletion
+"""
+type PlantDeleteResponse {
+    success: Boolean!
+    message: String!
+}
+
+# ========================================
+# QUERIES
+# ========================================
+
+extend type Query {
+    """
+    Get all plants with optional filtering
+    """
+    plants(filter: PlantFilterInput): PlantsResponse!
+    
+    """
+    Get a single plant by ID
+    """
+    plant(id: String!): PlantResponse
+    
+    """
+    Get plants for a specific user
+    """
+    userPlants(userId: String!, filter: PlantFilterInput): PlantsResponse!
+}
+
+# ========================================
+# MUTATIONS
+# ========================================
+
+extend type Mutation {
+    """
+    Create a new plant
+    """
+    createPlant(input: CreatePlantInput!): PlantMutationResponse!
+    
+    """
+    Update an existing plant
+    """
+    updatePlant(id: String!, input: UpdatePlantInput!): PlantMutationResponse!
+    
+    """
+    Delete a plant
+    """
+    deletePlant(id: String!): PlantDeleteResponse!
+}

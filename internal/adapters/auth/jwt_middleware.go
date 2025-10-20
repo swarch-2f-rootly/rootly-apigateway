@@ -47,6 +47,12 @@ func NewJWTMiddleware(
 // ValidateRequest validates JWT token for protected routes
 func (m *JWTMiddleware) ValidateRequest() gin.HandlerFunc {
 	return func(c *gin.Context) {
+		// Always allow OPTIONS requests (CORS preflight)
+		if c.Request.Method == "OPTIONS" {
+			c.Next()
+			return
+		}
+
 		// Get route configuration
 		routeConfig, found := m.configProvider.GetRouteConfig(c.Request.URL.Path, c.Request.Method)
 		

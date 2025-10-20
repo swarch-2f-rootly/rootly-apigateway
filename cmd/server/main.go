@@ -103,20 +103,31 @@ func main() {
 	router.Use(gin.Logger())
 	router.Use(gin.Recovery())
 
-	// Setup CORS
+	// Setup CORS - MUST be before JWT middleware to handle preflight requests
+	corsConfig := cors.DefaultConfig()
 	if cfg.CORS.AllowAllOrigins {
-		corsConfig := cors.DefaultConfig()
 		corsConfig.AllowAllOrigins = true
-		corsConfig.AllowHeaders = cfg.CORS.AllowedHeaders
-		corsConfig.AllowMethods = cfg.CORS.AllowedMethods
-		router.Use(cors.New(corsConfig))
 	} else if len(cfg.CORS.AllowedOrigins) > 0 {
-		corsConfig := cors.DefaultConfig()
 		corsConfig.AllowOrigins = cfg.CORS.AllowedOrigins
-		corsConfig.AllowHeaders = cfg.CORS.AllowedHeaders
-		corsConfig.AllowMethods = cfg.CORS.AllowedMethods
-		router.Use(cors.New(corsConfig))
+	} else {
+		// Default fallback if no CORS config is set
+		corsConfig.AllowAllOrigins = true
 	}
+	corsConfig.AllowHeaders = append(cfg.CORS.AllowedHeaders, "Accept", "Accept-Language", "Content-Language", "X-Request-ID")
+	corsConfig.AllowMethods = cfg.CORS.AllowedMethods
+	corsConfig.AllowCredentials = true
+	corsConfig.ExposeHeaders = []string{"Content-Length", "Content-Type", "Authorization"}
+	corsConfig.MaxAge = 12 * time.Hour
+	
+	router.Use(cors.New(corsConfig))
+
+	logger.Info("CORS middleware configured", map[string]interface{}{
+		"allow_all_origins":  corsConfig.AllowAllOrigins,
+		"allowed_origins":    corsConfig.AllowOrigins,
+		"allowed_methods":    corsConfig.AllowMethods,
+		"allowed_headers":    corsConfig.AllowHeaders,
+		"allow_credentials":  corsConfig.AllowCredentials,
+	})
 
 	// Setup JWT middleware for authentication
 	jwtMiddleware := auth.NewJWTMiddleware(

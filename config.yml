@@ -10,7 +10,7 @@ cors:
   allow_all_origins: true
   allowed_origins: []
   allowed_methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"]
-  allowed_headers: ["Origin", "Content-Length", "Content-Type", "Authorization"]
+  allowed_headers: ["Origin", "Content-Length", "Content-Type", "Authorization", "Accept", "Accept-Language", "Content-Language", "X-Request-ID"]
 
 logging:
   level: "info"

@@ -118,10 +118,11 @@ type Strategy struct {
 type StrategyType string
 
 const (
-	ProxyStrategy          StrategyType = "proxy"
-	DashboardOrchestrator  StrategyType = "dashboard_orchestrator"
-	PlantFullReport        StrategyType = "plant_full_report"
-	LocalSchema            StrategyType = "local_schema"
+	ProxyStrategy              StrategyType = "proxy"
+	DashboardOrchestrator      StrategyType = "dashboard_orchestrator"
+	PlantFullReport            StrategyType = "plant_full_report"
+	UserProfileOrchestrator    StrategyType = "user_profile_orchestrator"
+	LocalSchema                StrategyType = "local_schema"
 )
 
 // Validate validates the route configuration

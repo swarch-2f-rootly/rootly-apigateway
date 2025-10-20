@@ -210,6 +210,9 @@ func registerStrategies(strategyManager *services.StrategyManager, logger ports.
 	plantReportStrategy := strategies.NewPlantFullReportStrategy()
 	strategyManager.RegisterStrategy(plantReportStrategy.GetName(), plantReportStrategy)
 
+	userProfileStrategy := strategies.NewUserProfileOrchestratorStrategy()
+	strategyManager.RegisterStrategy(userProfileStrategy.GetName(), userProfileStrategy)
+
 	// Register GraphQL strategies
 	localSchemaStrategy := strategies.NewLocalSchemaStrategy()
 	strategyManager.RegisterStrategy(localSchemaStrategy.GetName(), localSchemaStrategy)

@@ -9,6 +9,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/swarch-2f-rootly/rootly-apigateway/internal/adapters/auth"
 	"github.com/swarch-2f-rootly/rootly-apigateway/internal/config"
 	"github.com/swarch-2f-rootly/rootly-apigateway/internal/core/domain"
 	"github.com/swarch-2f-rootly/rootly-apigateway/internal/core/ports"
@@ -21,6 +22,11 @@ type GatewayHandler struct {
 	configProvider ports.ConfigProvider
 	logger         ports.Logger
 }
+
+// context key type to avoid collisions when using context.WithValue
+type ctxKey string
+
+const requestIDKey ctxKey = "request_id"
 
 // NewGatewayHandler creates a new gateway handler
 func NewGatewayHandler(
@@ -48,6 +54,19 @@ func (gh *GatewayHandler) HandleRequest(c *gin.Context) {
 		Headers:   make(map[string]string),
 		Query:     make(map[string]string),
 		StartTime: startTime,
+	}
+
+	// Extract user information from Gin context (set by JWT middleware)
+	if userInterface, exists := c.Get("user"); exists {
+		if userInfo, ok := userInterface.(*auth.UserInfo); ok {
+			reqCtx.User = &domain.User{
+				ID:       userInfo.ID,
+				Email:    userInfo.Email,
+				Username: userInfo.Username,
+				Roles:    userInfo.Roles,
+				Metadata: userInfo.Metadata,
+			}
+		}
 	}
 
 	// Extract headers
@@ -104,16 +123,24 @@ func (gh *GatewayHandler) HandleRequest(c *gin.Context) {
 		}
 	}
 
-	gh.logger.Info("Request received", map[string]interface{}{
+	logFields := map[string]interface{}{
 		"request_id": requestID,
 		"method":     reqCtx.Method,
 		"path":       reqCtx.Path,
 		"user_agent": c.GetHeader("User-Agent"),
 		"remote_ip":  c.ClientIP(),
-	})
+	}
+
+	// Add user_id to logs if authenticated
+	if reqCtx.User != nil {
+		logFields["user_id"] = reqCtx.User.ID
+	}
+
+	// Build context carrying request id and use request context to allow cancellation
+	ctx := context.WithValue(c.Request.Context(), requestIDKey, requestID)
+	gh.logger.Info("Request received", logFields)
 
 	// Process request
-	ctx := context.WithValue(context.Background(), "request_id", requestID)
 	response, err := gh.gatewayService.ProcessRequest(ctx, reqCtx)
 
 	// Handle errors

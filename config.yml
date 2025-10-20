@@ -493,6 +493,35 @@ routes:
       - service: "data_management"
         endpoint: "/api/v1/data/plants/{id}"
   
+  # User profile orchestration (aggregates user data from multiple services)
+  # Returns comprehensive user profile including personal info, plants, and devices
+  - path: "/api/v1/profile"
+    method: "GET"
+    mode: "logic"
+    strategy: "user_profile_orchestrator"
+    auth_required: true
+    upstreams:
+      - service: "auth"
+        endpoint: "/api/v1/users/{user_id}"
+      - service: "plant_management"
+        endpoint: "/api/v1/plants/users/{user_id}"
+      - service: "plant_management"
+        endpoint: "/api/v1/devices/users/{user_id}"
+  
+  # User profile by ID (for admins or specific user lookup)
+  - path: "/api/v1/profile/{user_id}"
+    method: "GET"
+    mode: "logic"
+    strategy: "user_profile_orchestrator"
+    auth_required: true
+    upstreams:
+      - service: "auth"
+        endpoint: "/api/v1/users/{user_id}"
+      - service: "plant_management"
+        endpoint: "/api/v1/plants/users/{user_id}"
+      - service: "plant_management"
+        endpoint: "/api/v1/devices/users/{user_id}"
+  
   # ============================================================================
   # GRAPHQL ROUTES
   # ============================================================================
@@ -544,6 +573,12 @@ strategies:
     timeout: "20s"
     parallel_requests: true
     failure_policy: "fail_fast"
+  
+  user_profile_orchestrator:
+    timeout: "15s"
+    parallel_requests: true
+    failure_policy: "partial_success"
+    description: "Orchestrates user profile data from auth, plants, and devices services"
     
   local_schema:
     introspection_enabled: true

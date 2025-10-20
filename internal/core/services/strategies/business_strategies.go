@@ -318,6 +318,290 @@ func (dos *DashboardOrchestratorStrategy) callService(ctx context.Context, upstr
 	return result, nil
 }
 
+// UserProfileOrchestratorStrategy orchestrates calls for complete user profile
+type UserProfileOrchestratorStrategy struct {
+	name string
+}
+
+// NewUserProfileOrchestratorStrategy creates a new user profile orchestrator strategy
+func NewUserProfileOrchestratorStrategy() *UserProfileOrchestratorStrategy {
+	return &UserProfileOrchestratorStrategy{
+		name: "user_profile_orchestrator",
+	}
+}
+
+// GetName returns the strategy name
+func (upos *UserProfileOrchestratorStrategy) GetName() string {
+	return upos.name
+}
+
+// Execute executes the user profile orchestrator strategy
+func (upos *UserProfileOrchestratorStrategy) Execute(ctx context.Context, params ports.StrategyParams) (interface{}, error) {
+	// Extract user ID from authenticated user or from path
+	userID := upos.extractUserID(params)
+	if userID == "" {
+		return nil, fmt.Errorf("user ID not found")
+	}
+
+	params.Logger.Info("🔍 Fetching user profile", map[string]interface{}{
+		"user_id": userID,
+	})
+
+	// Define service calls for user profile data
+	type serviceResult struct {
+		key  string
+		data interface{}
+		err  error
+	}
+
+	resultChan := make(chan serviceResult, 3)
+
+	// 1. Fetch user basic information from auth service
+	go func() {
+		data, err := upos.fetchUserInfo(ctx, userID, params)
+		resultChan <- serviceResult{key: "user_info", data: data, err: err}
+	}()
+
+	// 2. Fetch user's plants from plant management service
+	go func() {
+		data, err := upos.fetchUserPlants(ctx, userID, params)
+		resultChan <- serviceResult{key: "plants", data: data, err: err}
+	}()
+
+	// 3. Fetch user's devices from plant management service
+	go func() {
+		data, err := upos.fetchUserDevices(ctx, userID, params)
+		resultChan <- serviceResult{key: "devices", data: data, err: err}
+	}()
+
+	// Collect results
+	results := make(map[string]interface{})
+	errors := make(map[string]string)
+
+	for i := 0; i < 3; i++ {
+		result := <-resultChan
+		if result.err != nil {
+			errors[result.key] = result.err.Error()
+			params.Logger.Warn(fmt.Sprintf("Failed to fetch %s", result.key), map[string]interface{}{
+				"user_id": userID,
+				"error":   result.err.Error(),
+			})
+		} else {
+			results[result.key] = result.data
+		}
+	}
+
+	// Check if critical data is missing (user_info is required)
+	if _, hasUserInfo := results["user_info"]; !hasUserInfo {
+		return nil, fmt.Errorf("failed to retrieve user information")
+	}
+
+	// Build comprehensive profile response
+	profile := map[string]interface{}{
+		"timestamp": time.Now().UTC().Format(time.RFC3339),
+		"user":      results["user_info"],
+		"plants":    results["plants"],
+		"devices":   results["devices"],
+		"stats": map[string]interface{}{
+			"total_plants":  upos.countItems(results["plants"]),
+			"total_devices": upos.countItems(results["devices"]),
+		},
+	}
+
+	if len(errors) > 0 {
+		profile["partial_errors"] = errors
+		params.Logger.Info("✅ Profile loaded with some partial errors", map[string]interface{}{
+			"user_id":      userID,
+			"errors_count": len(errors),
+		})
+	} else {
+		params.Logger.Info("✅ Profile loaded successfully", map[string]interface{}{
+			"user_id": userID,
+		})
+	}
+
+	return profile, nil
+}
+
+// extractUserID extracts user ID from authenticated user or request path
+func (upos *UserProfileOrchestratorStrategy) extractUserID(params ports.StrategyParams) string {
+	// Priority 1: From authenticated user context
+	if params.UserInfo != nil && params.UserInfo.ID != "" {
+		return params.UserInfo.ID
+	}
+
+	// Priority 2: From URL path parameter (e.g., /api/v1/profile/{user_id})
+	parts := strings.Split(strings.Trim(params.Request.URL.Path, "/"), "/")
+	for i, part := range parts {
+		if part == "profile" && i+1 < len(parts) {
+			return parts[i+1]
+		}
+	}
+
+	return ""
+}
+
+// fetchUserInfo retrieves user information from auth service
+func (upos *UserProfileOrchestratorStrategy) fetchUserInfo(ctx context.Context, userID string, params ports.StrategyParams) (interface{}, error) {
+	serviceInfo, exists := params.Services["auth"]
+	if !exists {
+		return nil, fmt.Errorf("auth service not configured")
+	}
+
+	targetURL := fmt.Sprintf("%s/api/v1/users/%s", serviceInfo.URL, userID)
+	
+	req, err := http.NewRequestWithContext(ctx, "GET", targetURL, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	// Forward authorization header
+	if authHeader := params.Request.Header.Get("Authorization"); authHeader != "" {
+		req.Header.Set("Authorization", authHeader)
+	}
+
+	client := &http.Client{Timeout: 10 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode >= 400 {
+		body, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("auth service returned status %d: %s", resp.StatusCode, string(body))
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read response: %w", err)
+	}
+
+	var result interface{}
+	if err := json.Unmarshal(body, &result); err != nil {
+		return nil, fmt.Errorf("failed to parse response: %w", err)
+	}
+
+	return result, nil
+}
+
+// fetchUserPlants retrieves user's plants from plant management service
+func (upos *UserProfileOrchestratorStrategy) fetchUserPlants(ctx context.Context, userID string, params ports.StrategyParams) (interface{}, error) {
+	serviceInfo, exists := params.Services["plant_management"]
+	if !exists {
+		return nil, fmt.Errorf("plant_management service not configured")
+	}
+
+	targetURL := fmt.Sprintf("%s/api/v1/plants/users/%s", serviceInfo.URL, userID)
+	
+	req, err := http.NewRequestWithContext(ctx, "GET", targetURL, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	// Forward authorization header
+	if authHeader := params.Request.Header.Get("Authorization"); authHeader != "" {
+		req.Header.Set("Authorization", authHeader)
+	}
+
+	client := &http.Client{Timeout: 10 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	// If not found, return empty array instead of error
+	if resp.StatusCode == 404 {
+		return []interface{}{}, nil
+	}
+
+	if resp.StatusCode >= 400 {
+		body, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("plant service returned status %d: %s", resp.StatusCode, string(body))
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read response: %w", err)
+	}
+
+	var result interface{}
+	if err := json.Unmarshal(body, &result); err != nil {
+		return nil, fmt.Errorf("failed to parse response: %w", err)
+	}
+
+	return result, nil
+}
+
+// fetchUserDevices retrieves user's devices from plant management service
+func (upos *UserProfileOrchestratorStrategy) fetchUserDevices(ctx context.Context, userID string, params ports.StrategyParams) (interface{}, error) {
+	serviceInfo, exists := params.Services["plant_management"]
+	if !exists {
+		return nil, fmt.Errorf("plant_management service not configured")
+	}
+
+	targetURL := fmt.Sprintf("%s/api/v1/devices/users/%s", serviceInfo.URL, userID)
+	
+	req, err := http.NewRequestWithContext(ctx, "GET", targetURL, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	// Forward authorization header
+	if authHeader := params.Request.Header.Get("Authorization"); authHeader != "" {
+		req.Header.Set("Authorization", authHeader)
+	}
+
+	client := &http.Client{Timeout: 10 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	// If not found, return empty array instead of error
+	if resp.StatusCode == 404 {
+		return []interface{}{}, nil
+	}
+
+	if resp.StatusCode >= 400 {
+		body, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("device service returned status %d: %s", resp.StatusCode, string(body))
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read response: %w", err)
+	}
+
+	var result interface{}
+	if err := json.Unmarshal(body, &result); err != nil {
+		return nil, fmt.Errorf("failed to parse response: %w", err)
+	}
+
+	return result, nil
+}
+
+// countItems counts the number of items in a result (handles both arrays and maps)
+func (upos *UserProfileOrchestratorStrategy) countItems(data interface{}) int {
+	if data == nil {
+		return 0
+	}
+
+	switch v := data.(type) {
+	case []interface{}:
+		return len(v)
+	case map[string]interface{}:
+		if items, ok := v["items"].([]interface{}); ok {
+			return len(items)
+		}
+		return 1
+	default:
+		return 0
+	}
+}
+
 // PlantFullReportStrategy orchestrates calls for a complete plant report
 type PlantFullReportStrategy struct {
 	name string

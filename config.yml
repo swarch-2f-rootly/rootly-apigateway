@@ -369,25 +369,97 @@ routes:
     target_path: "/api/v1/devices/users/{user_id}"
     auth_required: true
   
+  # Plant Management service health endpoint
+  - path: "/api/v1/plants/health"
+    method: "GET"
+    mode: "proxy"
+    upstream: "plant_management"
+    target_path: "/health"
+    auth_required: false
+  
   # ============================================================================
   # ANALYTICS SERVICE ROUTES
   # ============================================================================
   
-  # Analytics health check (public)
+  # Analytics - Single Metric Report
+  - path: "/api/v1/analytics/report/{metric_name}"
+    method: "GET"
+    mode: "proxy"
+    upstream: "analytics"
+    target_path: "/api/v1/analytics/report/{metric_name}"
+    auth_required: true
+  
+  # Analytics - Multiple Metrics Report
+  - path: "/api/v1/analytics/multi-report"
+    method: "POST"
+    mode: "proxy"
+    upstream: "analytics"
+    target_path: "/api/v1/analytics/multi-report"
+    auth_required: true
+  
+  # Analytics - Trend Analysis
+  - path: "/api/v1/analytics/trends/{metric_name}"
+    method: "GET"
+    mode: "proxy"
+    upstream: "analytics"
+    target_path: "/api/v1/analytics/trends/{metric_name}"
+    auth_required: true
+  
+  # Analytics - Supported Metrics
+  - path: "/api/v1/analytics/metrics"
+    method: "GET"
+    mode: "proxy"
+    upstream: "analytics"
+    target_path: "/api/v1/analytics/metrics"
+    auth_required: true
+  
+  # Analytics - Latest Measurement
+  - path: "/api/v1/analytics/latest/{controller_id}"
+    method: "GET"
+    mode: "proxy"
+    upstream: "analytics"
+    target_path: "/api/v1/analytics/latest/{controller_id}"
+    auth_required: true
+  
+  # Analytics - Historical Query
+  - path: "/api/v1/analytics/historical"
+    method: "GET"
+    mode: "proxy"
+    upstream: "analytics"
+    target_path: "/api/v1/analytics/historical"
+    auth_required: true
+  
+  # Analytics - Historical Averages
+  - path: "/api/v1/analytics/historical/averages"
+    method: "GET"
+    mode: "proxy"
+    upstream: "analytics"
+    target_path: "/api/v1/analytics/historical/averages"
+    auth_required: true
+  
+  # Analytics - Health Check (specific endpoint)
   - path: "/api/v1/analytics/health"
+    method: "GET"
+    mode: "proxy"
+    upstream: "analytics"
+    target_path: "/api/v1/analytics/health"
+    auth_required: false
+  
+  # Analytics - Root Endpoint
+  - path: "/api/v1/analytics/root"
+    method: "GET"
+    mode: "proxy"
+    upstream: "analytics"
+    target_path: "/"
+    auth_required: false
+  
+  # Analytics - Generic Health Check
+  - path: "/api/v1/analytics/service-health"
     method: "GET"
     mode: "proxy"
     upstream: "analytics"
     target_path: "/health"
     auth_required: false
-  
-  # Analytics endpoints (protected)
-  - path: "/api/v1/analytics/*"
-    method: "*"
-    mode: "proxy"
-    upstream: "analytics"
-    target_path: "/*"
-    auth_required: true
   
   # ============================================================================
   # ORCHESTRATED ROUTES (Business Logic)
@@ -425,9 +497,15 @@ routes:
   # GRAPHQL ROUTES
   # ============================================================================
   
-  # GraphQL analytics proxy (alternative endpoint)
-  # Alternative path for accessing analytics GraphQL
-  - path: "/graphql/analytics"
+  # GraphQL endpoint - follows the actual service path structure
+  - path: "/api/v1/graphql"
+    method: "GET"
+    mode: "proxy"
+    upstream: "analytics"
+    target_path: "/api/v1/graphql"
+    auth_required: true
+  
+  - path: "/api/v1/graphql"
     method: "POST"
     mode: "proxy"
     upstream: "analytics"

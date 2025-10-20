@@ -1,0 +1,425 @@
+# Rootly API Gateway Configuration
+server:
+  host: "0.0.0.0"
+  port: 8080
+  read_timeout: "30s"
+  write_timeout: "30s"
+
+# CORS Configuration
+cors:
+  allow_all_origins: true
+  allowed_origins: []
+  allowed_methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"]
+  allowed_headers: ["Origin", "Content-Length", "Content-Type", "Authorization"]
+
+logging:
+  level: "info"
+  format: "json"
+
+# Service endpoints (matching docker-compose.yml)
+services:
+  analytics:
+    url: "http://be-analytics:8000"
+    timeout: "10s"
+  auth:
+    url: "http://be-authentication-and-roles:8000"
+    timeout: "10s"
+  data_management:
+    url: "http://be-data-processing:8000"
+    timeout: "10s"
+  plant_management:
+    url: "http://be-user-plant-management:8000"
+    timeout: "10s"
+
+# Routes configuration
+routes:
+  # ============================================================================
+  # AUTHENTICATION & ROLES SERVICE ROUTES
+  # ============================================================================
+  
+  # Public authentication endpoints (no auth required)
+  - path: "/api/v1/auth/register"
+    method: "POST"
+    mode: "proxy"
+    upstream: "auth"
+    target_path: "/api/v1/auth/register"
+    auth_required: false
+    
+  - path: "/api/v1/auth/login"
+    method: "POST"
+    mode: "proxy"
+    upstream: "auth"
+    target_path: "/api/v1/auth/login"
+    auth_required: false
+  
+  - path: "/api/v1/auth/refresh"
+    method: "POST"
+    mode: "proxy"
+    upstream: "auth"
+    target_path: "/api/v1/auth/refresh"
+    auth_required: false
+  
+  # Protected authentication endpoints
+  - path: "/api/v1/auth/logout"
+    method: "POST"
+    mode: "proxy"
+    upstream: "auth"
+    target_path: "/api/v1/auth/logout"
+    auth_required: true
+  
+  - path: "/api/v1/auth/validate"
+    method: "POST"
+    mode: "proxy"
+    upstream: "auth"
+    target_path: "/api/v1/auth/validate"
+    auth_required: true
+  
+  # User management endpoints
+  - path: "/api/v1/users"
+    method: "GET"
+    mode: "proxy"
+    upstream: "auth"
+    target_path: "/api/v1/users"
+    auth_required: true
+  
+  - path: "/api/v1/users/{user_id}"
+    method: "GET"
+    mode: "proxy"
+    upstream: "auth"
+    target_path: "/api/v1/users/{user_id}"
+    auth_required: true
+  
+  - path: "/api/v1/users/{user_id}"
+    method: "PUT"
+    mode: "proxy"
+    upstream: "auth"
+    target_path: "/api/v1/users/{user_id}"
+    auth_required: true
+  
+  - path: "/api/v1/users/{user_id}"
+    method: "DELETE"
+    mode: "proxy"
+    upstream: "auth"
+    target_path: "/api/v1/users/{user_id}"
+    auth_required: true
+  
+  # Role management endpoints
+  - path: "/api/v1/roles"
+    method: "GET"
+    mode: "proxy"
+    upstream: "auth"
+    target_path: "/api/v1/roles"
+    auth_required: true
+  
+  - path: "/api/v1/roles"
+    method: "POST"
+    mode: "proxy"
+    upstream: "auth"
+    target_path: "/api/v1/roles"
+    auth_required: true
+  
+  - path: "/api/v1/roles/{role_id}"
+    method: "GET"
+    mode: "proxy"
+    upstream: "auth"
+    target_path: "/api/v1/roles/{role_id}"
+    auth_required: true
+  
+  - path: "/api/v1/roles/{role_id}"
+    method: "PUT"
+    mode: "proxy"
+    upstream: "auth"
+    target_path: "/api/v1/roles/{role_id}"
+    auth_required: true
+  
+  - path: "/api/v1/roles/{role_id}"
+    method: "DELETE"
+    mode: "proxy"
+    upstream: "auth"
+    target_path: "/api/v1/roles/{role_id}"
+    auth_required: true
+  
+  # User-Role assignment endpoints
+  - path: "/api/v1/users/{user_id}/roles/{role_id}"
+    method: "POST"
+    mode: "proxy"
+    upstream: "auth"
+    target_path: "/api/v1/users/{user_id}/roles/{role_id}"
+    auth_required: true
+  
+  - path: "/api/v1/users/{user_id}/roles/{role_id}"
+    method: "DELETE"
+    mode: "proxy"
+    upstream: "auth"
+    target_path: "/api/v1/users/{user_id}/roles/{role_id}"
+    auth_required: true
+  
+  - path: "/api/v1/users/{user_id}/roles"
+    method: "GET"
+    mode: "proxy"
+    upstream: "auth"
+    target_path: "/api/v1/users/{user_id}/roles"
+    auth_required: true
+  
+  # ============================================================================
+  # USER PLANT MANAGEMENT SERVICE ROUTES
+  # ============================================================================
+  
+  # Plant CRUD operations
+  - path: "/api/v1/plants"
+    method: "GET"
+    mode: "proxy"
+    upstream: "plant_management"
+    target_path: "/api/v1/plants/"
+    auth_required: true
+  
+  - path: "/api/v1/plants"
+    method: "POST"
+    mode: "proxy"
+    upstream: "plant_management"
+    target_path: "/api/v1/plants/"
+    auth_required: true
+  
+  - path: "/api/v1/plants/{plant_id}"
+    method: "GET"
+    mode: "proxy"
+    upstream: "plant_management"
+    target_path: "/api/v1/plants/{plant_id}"
+    auth_required: true
+  
+  - path: "/api/v1/plants/{plant_id}"
+    method: "PUT"
+    mode: "proxy"
+    upstream: "plant_management"
+    target_path: "/api/v1/plants/{plant_id}"
+    auth_required: true
+  
+  - path: "/api/v1/plants/{plant_id}"
+    method: "DELETE"
+    mode: "proxy"
+    upstream: "plant_management"
+    target_path: "/api/v1/plants/{plant_id}"
+    auth_required: true
+  
+  # Plant-Device association
+  - path: "/api/v1/plants/{plant_id}/devices/{device_id}"
+    method: "POST"
+    mode: "proxy"
+    upstream: "plant_management"
+    target_path: "/api/v1/plants/{plant_id}/devices/{device_id}"
+    auth_required: true
+  
+  - path: "/api/v1/plants/{plant_id}/devices/{device_id}"
+    method: "DELETE"
+    mode: "proxy"
+    upstream: "plant_management"
+    target_path: "/api/v1/plants/{plant_id}/devices/{device_id}"
+    auth_required: true
+  
+  - path: "/api/v1/plants/{plant_id}/devices"
+    method: "GET"
+    mode: "proxy"
+    upstream: "plant_management"
+    target_path: "/api/v1/plants/{plant_id}/devices"
+    auth_required: true
+  
+  # Plant photo management
+  - path: "/api/v1/plants/{plant_id}/photo"
+    method: "POST"
+    mode: "proxy"
+    upstream: "plant_management"
+    target_path: "/api/v1/plants/{plant_id}/photo"
+    auth_required: true
+  
+  - path: "/api/v1/plants/{plant_id}/photo"
+    method: "GET"
+    mode: "proxy"
+    upstream: "plant_management"
+    target_path: "/api/v1/plants/{plant_id}/photo"
+    auth_required: true
+  
+  - path: "/api/v1/plants/{plant_id}/photo"
+    method: "DELETE"
+    mode: "proxy"
+    upstream: "plant_management"
+    target_path: "/api/v1/plants/{plant_id}/photo"
+    auth_required: true
+  
+  # User's plants
+  - path: "/api/v1/plants/users/{user_id}"
+    method: "GET"
+    mode: "proxy"
+    upstream: "plant_management"
+    target_path: "/api/v1/plants/users/{user_id}"
+    auth_required: true
+  
+  # Device CRUD operations
+  - path: "/api/v1/devices"
+    method: "GET"
+    mode: "proxy"
+    upstream: "plant_management"
+    target_path: "/api/v1/devices/"
+    auth_required: true
+  
+  - path: "/api/v1/devices"
+    method: "POST"
+    mode: "proxy"
+    upstream: "plant_management"
+    target_path: "/api/v1/devices/"
+    auth_required: true
+  
+  - path: "/api/v1/devices/{device_id}"
+    method: "GET"
+    mode: "proxy"
+    upstream: "plant_management"
+    target_path: "/api/v1/devices/{device_id}"
+    auth_required: true
+  
+  - path: "/api/v1/devices/{device_id}"
+    method: "PUT"
+    mode: "proxy"
+    upstream: "plant_management"
+    target_path: "/api/v1/devices/{device_id}"
+    auth_required: true
+  
+  - path: "/api/v1/devices/{device_id}"
+    method: "DELETE"
+    mode: "proxy"
+    upstream: "plant_management"
+    target_path: "/api/v1/devices/{device_id}"
+    auth_required: true
+  
+  # User's devices
+  - path: "/api/v1/devices/users/{user_id}/devices/{device_id}"
+    method: "PUT"
+    mode: "proxy"
+    upstream: "plant_management"
+    target_path: "/api/v1/devices/users/{user_id}/devices/{device_id}"
+    auth_required: true
+  
+  - path: "/api/v1/devices/users/{user_id}/devices/{device_id}"
+    method: "DELETE"
+    mode: "proxy"
+    upstream: "plant_management"
+    target_path: "/api/v1/devices/users/{user_id}/devices/{device_id}"
+    auth_required: true
+  
+  - path: "/api/v1/devices/users/{user_id}/devices/{device_id}"
+    method: "GET"
+    mode: "proxy"
+    upstream: "plant_management"
+    target_path: "/api/v1/devices/users/{user_id}/devices/{device_id}"
+    auth_required: true
+  
+  - path: "/api/v1/devices/users/{user_id}"
+    method: "GET"
+    mode: "proxy"
+    upstream: "plant_management"
+    target_path: "/api/v1/devices/users/{user_id}"
+    auth_required: true
+  
+  # ============================================================================
+  # ANALYTICS SERVICE ROUTES
+  # ============================================================================
+  
+  # Analytics health check (public)
+  - path: "/api/v1/analytics/health"
+    method: "GET"
+    mode: "proxy"
+    upstream: "analytics"
+    target_path: "/health"
+    auth_required: false
+  
+  # Analytics endpoints (protected)
+  - path: "/api/v1/analytics/*"
+    method: "*"
+    mode: "proxy"
+    upstream: "analytics"
+    target_path: "/*"
+    auth_required: true
+  
+  # ============================================================================
+  # ORCHESTRATED ROUTES (Business Logic)
+  # ============================================================================
+  
+  # Dashboard orchestration (aggregates data from multiple services)
+  - path: "/api/v1/dashboard"
+    method: "GET"
+    mode: "logic"
+    strategy: "dashboard_orchestrator"
+    auth_required: true
+    upstreams:
+      - service: "analytics"
+        endpoint: "/api/v1/metrics/summary"
+      - service: "plant_management"
+        endpoint: "/api/v1/plants/summary"
+      - service: "auth"
+        endpoint: "/api/v1/users/me"
+  
+  # Plant full report (combines plant, analytics, and data management)
+  - path: "/api/v1/plants/{id}/full-report"
+    method: "GET"
+    mode: "logic"
+    strategy: "plant_full_report"
+    auth_required: true
+    upstreams:
+      - service: "plant_management"
+        endpoint: "/api/v1/plants/{id}"
+      - service: "analytics"
+        endpoint: "/api/v1/analytics/plants/{id}"
+      - service: "data_management"
+        endpoint: "/api/v1/data/plants/{id}"
+  
+  # ============================================================================
+  # GRAPHQL ROUTES
+  # ============================================================================
+  
+  # GraphQL analytics proxy (alternative endpoint)
+  # Alternative path for accessing analytics GraphQL
+  - path: "/graphql/analytics"
+    method: "POST"
+    mode: "proxy"
+    upstream: "analytics"
+    target_path: "/api/v1/graphql"
+    auth_required: true
+
+# Authentication configuration
+auth:
+  # JWT Secret key for token validation (should match auth service secret)
+  # In production, this should be loaded from environment variable: JWT_SECRET_KEY
+  jwt_secret: "your-secret-key-here-change-in-production"
+  
+  # JWT token expiration time
+  jwt_expiration: "24h"
+  
+  # Auth service validation endpoint
+  # The gateway validates tokens by calling this service
+  validation_endpoint: "/api/v1/auth/validate"
+  
+  # Optional: API Key header for alternative authentication (not currently used)
+  # api_key_header: "X-API-Key"
+  
+  # Token validation strategy: "service" or "local"
+  # - "service": Validate tokens by calling the auth service (current implementation)
+  # - "local": Validate tokens locally using jwt_secret (faster, but tokens can't be revoked immediately)
+  validation_strategy: "service"
+
+# Strategy configurations
+strategies:
+  dashboard_orchestrator:
+    timeout: "15s"
+    parallel_requests: true
+    failure_policy: "partial_success"
+    
+  plant_full_report:
+    timeout: "20s"
+    parallel_requests: true
+    failure_policy: "fail_fast"
+    
+  local_schema:
+    introspection_enabled: true
+    playground_enabled: true
+    
+  proxy:
+    preserve_headers: true
+    timeout: "30s"

@@ -62,9 +62,11 @@ type UpstreamConfig struct {
 
 // AuthConfig holds authentication configuration
 type AuthConfig struct {
-	APIKeyHeader  string        `yaml:"api_key_header"`
-	JWTSecret     string        `yaml:"jwt_secret"`
-	JWTExpiration time.Duration `yaml:"jwt_expiration"`
+	APIKeyHeader       string        `yaml:"api_key_header"`
+	JWTSecret          string        `yaml:"jwt_secret"`
+	JWTExpiration      time.Duration `yaml:"jwt_expiration"`
+	ValidationEndpoint string        `yaml:"validation_endpoint"`
+	ValidationStrategy string        `yaml:"validation_strategy"` // "service" or "local"
 }
 
 // StrategyConfig holds strategy-specific configuration
@@ -201,6 +203,12 @@ func (c *Config) populateDefaults() {
 	}
 	if c.Auth.JWTExpiration == 0 {
 		c.Auth.JWTExpiration = getDurationEnv("JWT_EXPIRATION", "24h")
+	}
+	if c.Auth.ValidationEndpoint == "" {
+		c.Auth.ValidationEndpoint = getEnv("JWT_VALIDATION_ENDPOINT", "/api/v1/auth/validate")
+	}
+	if c.Auth.ValidationStrategy == "" {
+		c.Auth.ValidationStrategy = getEnv("JWT_VALIDATION_STRATEGY", "service")
 	}
 
 	// Legacy fields for backward compatibility

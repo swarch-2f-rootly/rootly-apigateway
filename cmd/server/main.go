@@ -118,6 +118,23 @@ func main() {
 		router.Use(cors.New(corsConfig))
 	}
 
+	// Setup JWT middleware for authentication
+	jwtMiddleware := auth.NewJWTMiddleware(
+		cfg.Services["auth"].URL,
+		cfg.Auth.ValidationEndpoint,
+		cfg.Auth.ValidationStrategy,
+		logger,
+		configProvider,
+	)
+	router.Use(jwtMiddleware.ValidateRequest())
+
+	logger.Info("JWT middleware configured", map[string]interface{}{
+		"auth_service_url":     cfg.Services["auth"].URL,
+		"validation_endpoint":  cfg.Auth.ValidationEndpoint,
+		"validation_strategy":  cfg.Auth.ValidationStrategy,
+		"jwt_expiration":       cfg.Auth.JWTExpiration,
+	})
+
 	// Register routes
 	gatewayHandler.RegisterRoutes(router)
 

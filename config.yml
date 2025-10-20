@@ -38,13 +38,6 @@ routes:
   # ============================================================================
   
   # Public authentication endpoints (no auth required)
-  - path: "/api/v1/auth/register"
-    method: "POST"
-    mode: "proxy"
-    upstream: "auth"
-    target_path: "/api/v1/auth/register"
-    auth_required: false
-    
   - path: "/api/v1/auth/login"
     method: "POST"
     mode: "proxy"
@@ -76,6 +69,13 @@ routes:
   
   # User management endpoints
   - path: "/api/v1/users"
+    method: "POST"
+    mode: "proxy"
+    upstream: "auth"
+    target_path: "/api/v1/users"
+    auth_required: false
+  
+  - path: "/api/v1/users"
     method: "GET"
     mode: "proxy"
     upstream: "auth"
@@ -103,6 +103,20 @@ routes:
     target_path: "/api/v1/users/{user_id}"
     auth_required: true
   
+  - path: "/api/v1/users/{user_id}/change-password"
+    method: "POST"
+    mode: "proxy"
+    upstream: "auth"
+    target_path: "/api/v1/users/{user_id}/change-password"
+    auth_required: true
+  
+  - path: "/api/v1/users/{user_id}/roles"
+    method: "PUT"
+    mode: "proxy"
+    upstream: "auth"
+    target_path: "/api/v1/users/{user_id}/roles"
+    auth_required: true
+  
   # Role management endpoints
   - path: "/api/v1/roles"
     method: "GET"
@@ -111,13 +125,6 @@ routes:
     target_path: "/api/v1/roles"
     auth_required: true
   
-  - path: "/api/v1/roles"
-    method: "POST"
-    mode: "proxy"
-    upstream: "auth"
-    target_path: "/api/v1/roles"
-    auth_required: true
-  
   - path: "/api/v1/roles/{role_id}"
     method: "GET"
     mode: "proxy"
@@ -125,21 +132,65 @@ routes:
     target_path: "/api/v1/roles/{role_id}"
     auth_required: true
   
-  - path: "/api/v1/roles/{role_id}"
-    method: "PUT"
+  - path: "/api/v1/roles/permissions"
+    method: "GET"
     mode: "proxy"
     upstream: "auth"
-    target_path: "/api/v1/roles/{role_id}"
+    target_path: "/api/v1/roles/permissions"
     auth_required: true
   
-  - path: "/api/v1/roles/{role_id}"
+  - path: "/api/v1/roles/permissions/{permission_id}"
+    method: "GET"
+    mode: "proxy"
+    upstream: "auth"
+    target_path: "/api/v1/roles/permissions/{permission_id}"
+    auth_required: true
+  
+  # User profile photo management endpoints
+  - path: "/api/v1/users/{user_id}/photo"
+    method: "POST"
+    mode: "proxy"
+    upstream: "auth"
+    target_path: "/api/v1/users/{user_id}/photo"
+    auth_required: true
+  
+  - path: "/api/v1/users/{user_id}/photo"
+    method: "GET"
+    mode: "proxy"
+    upstream: "auth"
+    target_path: "/api/v1/users/{user_id}/photo"
+    auth_required: true
+  
+  - path: "/api/v1/users/{user_id}/photo"
     method: "DELETE"
     mode: "proxy"
     upstream: "auth"
-    target_path: "/api/v1/roles/{role_id}"
+    target_path: "/api/v1/users/{user_id}/photo"
     auth_required: true
   
-  # User-Role assignment endpoints
+  - path: "/api/v1/users/{user_id}/photo/metadata"
+    method: "GET"
+    mode: "proxy"
+    upstream: "auth"
+    target_path: "/api/v1/users/{user_id}/photo/metadata"
+    auth_required: true
+  
+  # Auth service health endpoints
+  - path: "/api/v1/auth/health"
+    method: "GET"
+    mode: "proxy"
+    upstream: "auth"
+    target_path: "/health"
+    auth_required: false
+  
+  - path: "/api/v1/auth/root"
+    method: "GET"
+    mode: "proxy"
+    upstream: "auth"
+    target_path: "/"
+    auth_required: false
+  
+  # User-Role assignment endpoints (deprecated - use PUT /users/{user_id}/roles instead)
   - path: "/api/v1/users/{user_id}/roles/{role_id}"
     method: "POST"
     mode: "proxy"

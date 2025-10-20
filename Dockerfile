@@ -38,10 +38,10 @@ RUN chown appuser:appgroup /app
 
 # Copy the binary and config from builder stage
 COPY --from=builder /app/rootly-apigateway .
-COPY --from=builder /app/config.yaml .
+COPY --from=builder /app/config.yml .
 
 # Set ownership and permissions
-RUN chown appuser:appgroup rootly-apigateway config.yaml && \
+RUN chown appuser:appgroup rootly-apigateway config.yml && \
     chmod +x rootly-apigateway
 
 # Switch to non-root user

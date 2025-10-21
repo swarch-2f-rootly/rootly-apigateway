@@ -545,7 +545,7 @@ routes:
 auth:
   # JWT Secret key for token validation (should match auth service secret)
   # In production, this should be loaded from environment variable: JWT_SECRET_KEY
-  jwt_secret: "your-super-secret-jwt-key-change-in-production"
+  jwt_secret: "test-jwt-secret-key-for-development-only-32-chars-minimum"
   
   # JWT token expiration time
   jwt_expiration: "24h"

@@ -171,7 +171,26 @@ func (gh *GatewayHandler) HandleRequest(c *gin.Context) {
 		"duration":    time.Since(startTime).Milliseconds(),
 	})
 
-	// Send response
+	// Send response (support binary bodies like images)
+	contentType := c.GetHeader("Content-Type")
+	if ctFromResp, ok := response.Headers["Content-Type"]; ok && ctFromResp != "" {
+		contentType = ctFromResp
+	}
+	if contentType == "" {
+		contentType = "application/json"
+	}
+
+	if strings.HasPrefix(strings.ToLower(contentType), "image/") || strings.HasPrefix(strings.ToLower(contentType), "application/octet-stream") {
+		if data, ok := response.Body.([]byte); ok {
+			c.Data(response.StatusCode, contentType, data)
+			return
+		}
+		if str, ok := response.Body.(string); ok {
+			c.Data(response.StatusCode, contentType, []byte(str))
+			return
+		}
+	}
+
 	c.JSON(response.StatusCode, response.Body)
 }
 

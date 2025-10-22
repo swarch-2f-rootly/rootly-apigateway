@@ -390,23 +390,36 @@ func (gs *GatewayService) convertHTTPResponse(httpResp *http.Response) (*domain.
 		return nil, fmt.Errorf("failed to read response body: %w", err)
 	}
 
-	// Try to parse as JSON
-	var body interface{}
-	if len(bodyBytes) > 0 {
-		if err := json.Unmarshal(bodyBytes, &body); err != nil {
-			// If not valid JSON, return as string
-			body = string(bodyBytes)
-		}
-	} else {
-		body = map[string]interface{}{}
-	}
-
 	// Convert headers
 	headers := make(map[string]string)
 	for key, values := range httpResp.Header {
 		if len(values) > 0 {
 			headers[key] = values[0]
 		}
+	}
+
+	// Detect binary content (e.g., images) and preserve raw bytes
+	contentType := httpResp.Header.Get("Content-Type")
+	isBinary := strings.HasPrefix(strings.ToLower(contentType), "image/") ||
+		strings.HasPrefix(strings.ToLower(contentType), "application/octet-stream")
+
+	if isBinary {
+		return &domain.Response{
+			StatusCode: httpResp.StatusCode,
+			Headers:    headers,
+			Body:       bodyBytes,
+			Metadata:   map[string]interface{}{"is_binary": true},
+		}, nil
+	}
+
+	// For non-binary content, try to parse as JSON; fallback to string
+	var body interface{}
+	if len(bodyBytes) > 0 {
+		if err := json.Unmarshal(bodyBytes, &body); err != nil {
+			body = string(bodyBytes)
+		}
+	} else {
+		body = map[string]interface{}{}
 	}
 
 	return &domain.Response{

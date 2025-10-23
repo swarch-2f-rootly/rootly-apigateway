@@ -404,6 +404,12 @@ func (gs *GatewayService) convertHTTPResponse(httpResp *http.Response) (*domain.
 		strings.HasPrefix(strings.ToLower(contentType), "application/octet-stream")
 
 	if isBinary {
+		gs.logger.Info("📦 Converted binary response", map[string]interface{}{
+			"status_code":  httpResp.StatusCode,
+			"content_type": contentType,
+			"body_size":    len(bodyBytes),
+			"is_binary":    true,
+		})
 		return &domain.Response{
 			StatusCode: httpResp.StatusCode,
 			Headers:    headers,
@@ -412,14 +418,61 @@ func (gs *GatewayService) convertHTTPResponse(httpResp *http.Response) (*domain.
 		}, nil
 	}
 
-	// For non-binary content, try to parse as JSON; fallback to string
+	// For non-binary content, preserve original JSON bytes or convert to string
 	var body interface{}
+	var responseType string
 	if len(bodyBytes) > 0 {
-		if err := json.Unmarshal(bodyBytes, &body); err != nil {
+		// Try to validate if it's JSON, but preserve original bytes
+		var temp interface{}
+		if err := json.Unmarshal(bodyBytes, &temp); err != nil {
+			// Not valid JSON, treat as text
 			body = string(bodyBytes)
+			responseType = "text"
+		} else {
+			// Valid JSON, preserve original bytes to avoid re-serialization differences
+			body = bodyBytes
+			responseType = "json"
 		}
 	} else {
 		body = map[string]interface{}{}
+		responseType = "empty"
+	}
+
+	// Log response details
+	gs.logger.Info("📦 Converted HTTP response", map[string]interface{}{
+		"status_code":   httpResp.StatusCode,
+		"content_type":  contentType,
+		"response_type": responseType,
+		"body_size":     len(bodyBytes),
+	})
+
+	// Log actual response body content
+	if responseType == "json" {
+		// For JSON responses, show the actual JSON string (preserving original bytes)
+		if len(bodyBytes) > 1000 {
+			gs.logger.Info("📄 Response body (JSON - truncated)", map[string]interface{}{
+				"response_body": fmt.Sprintf("%s... (truncated %d bytes)", string(bodyBytes[:1000]), len(bodyBytes)-1000),
+			})
+		} else {
+			gs.logger.Info("📄 Response body (JSON)", map[string]interface{}{
+				"response_body": string(bodyBytes),
+			})
+		}
+	} else if responseType == "text" {
+		// For text responses, show the actual content
+		if bodyStr := body.(string); len(bodyStr) > 500 {
+			gs.logger.Info("📄 Response body (Text - truncated)", map[string]interface{}{
+				"response_body": fmt.Sprintf("%s... (truncated %d chars)", bodyStr[:500], len(bodyStr)-500),
+			})
+		} else {
+			gs.logger.Info("📄 Response body (Text)", map[string]interface{}{
+				"response_body": body,
+			})
+		}
+	} else if responseType == "empty" {
+		gs.logger.Info("📄 Response body (Empty)", map[string]interface{}{
+			"response_body": "No content",
+		})
 	}
 
 	return &domain.Response{

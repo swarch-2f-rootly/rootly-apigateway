@@ -123,9 +123,9 @@ func (lss *LocalSchemaStrategy) callAuthService(ctx context.Context, request Gra
 func (lss *LocalSchemaStrategy) orchestrateDashboardQuery(ctx context.Context, request GraphQLRequest, params ports.StrategyParams) (interface{}, error) {
 	// For dashboard queries, we need to orchestrate multiple service calls
 	// This is a simplified example - real implementation would parse the GraphQL query properly
-	
+
 	results := make(map[string]interface{})
-	
+
 	// Call analytics for metrics
 	if analyticsService, exists := params.Services["analytics"]; exists {
 		analyticsQuery := GraphQLRequest{
@@ -201,19 +201,83 @@ func (lss *LocalSchemaStrategy) forwardGraphQLRequest(ctx context.Context, reque
 	client := &http.Client{Timeout: timeout}
 	resp, err := client.Do(req)
 	if err != nil {
+		params.Logger.Error("❌ GraphQL request failed", err, map[string]interface{}{
+			"target_url":     targetURL,
+			"operation_name": request.OperationName,
+		})
 		return nil, fmt.Errorf("GraphQL request failed: %w", err)
 	}
 	defer resp.Body.Close()
 
+	// Log GraphQL response details
+	params.Logger.Info("📥 GraphQL response received", map[string]interface{}{
+		"status_code":    resp.StatusCode,
+		"target_url":     targetURL,
+		"operation_name": request.OperationName,
+		"content_type":   resp.Header.Get("Content-Type"),
+		"content_length": resp.ContentLength,
+	})
+
 	// Read response
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
+		params.Logger.Error("❌ Failed to read GraphQL response body", err, map[string]interface{}{
+			"target_url": targetURL,
+		})
 		return nil, fmt.Errorf("failed to read GraphQL response: %w", err)
 	}
 
 	var result interface{}
 	if err := json.Unmarshal(body, &result); err != nil {
+		params.Logger.Error("❌ Failed to parse GraphQL response JSON", err, map[string]interface{}{
+			"target_url":    targetURL,
+			"response_size": len(body),
+		})
 		return nil, fmt.Errorf("failed to parse GraphQL response: %w", err)
+	}
+
+	// Log GraphQL response content
+	if resultMap, ok := result.(map[string]interface{}); ok {
+		hasErrors := false
+		if errors, exists := resultMap["errors"]; exists {
+			if errorsSlice, ok := errors.([]interface{}); ok && len(errorsSlice) > 0 {
+				hasErrors = true
+				params.Logger.Warn("⚠️ GraphQL response contains errors", map[string]interface{}{
+					"target_url":   targetURL,
+					"errors_count": len(errorsSlice),
+					"errors":       errorsSlice,
+				})
+			}
+		}
+
+		if hasData := resultMap["data"] != nil; hasData && !hasErrors {
+			params.Logger.Info("✅ GraphQL response successful", map[string]interface{}{
+				"target_url":     targetURL,
+				"operation_name": request.OperationName,
+				"has_data":       true,
+				"data":           resultMap["data"],
+			})
+		} else if hasErrors {
+			params.Logger.Warn("⚠️ GraphQL response with errors", map[string]interface{}{
+				"target_url":     targetURL,
+				"operation_name": request.OperationName,
+				"errors":         resultMap["errors"],
+			})
+		}
+	}
+
+	// Log actual response body content (truncated for very large responses)
+	if len(body) > 2000 {
+		params.Logger.Info("📄 GraphQL response body (truncated)", map[string]interface{}{
+			"response_body": string(body[:2000]) + "... (truncated " + fmt.Sprintf("%d", len(body)-2000) + " bytes)",
+			"full_size":     len(body),
+			"target_url":    targetURL,
+		})
+	} else {
+		params.Logger.Info("📄 GraphQL response body", map[string]interface{}{
+			"response_body": string(body),
+			"target_url":    targetURL,
+		})
 	}
 
 	return result, nil
@@ -271,7 +335,7 @@ func (gps *GraphQLProxyStrategy) GetName() string {
 // Execute executes the GraphQL proxy strategy
 func (gps *GraphQLProxyStrategy) Execute(ctx context.Context, params ports.StrategyParams) (interface{}, error) {
 	routeConfig := params.RouteConfig
-	
+
 	// Get target service info
 	serviceInfo, exists := params.Services[routeConfig.Upstream]
 	if !exists {
@@ -362,12 +426,12 @@ type GraphQLRequest struct {
 
 // contains checks if a string contains a substring (case-insensitive)
 func contains(str, substr string) bool {
-	return len(str) >= len(substr) && 
-		   (str == substr || 
-		    (len(str) > len(substr) && 
-		     (str[:len(substr)] == substr || 
-		      str[len(str)-len(substr):] == substr || 
-		      containsHelper(str, substr))))
+	return len(str) >= len(substr) &&
+		(str == substr ||
+			(len(str) > len(substr) &&
+				(str[:len(substr)] == substr ||
+					str[len(str)-len(substr):] == substr ||
+					containsHelper(str, substr))))
 }
 
 func containsHelper(str, substr string) bool {

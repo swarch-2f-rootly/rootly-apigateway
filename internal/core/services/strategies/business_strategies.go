@@ -102,13 +102,34 @@ func (ps *ProxyStrategy) Execute(ctx context.Context, params ports.StrategyParam
 	client := &http.Client{Timeout: timeout}
 	resp, err := client.Do(req)
 	if err != nil {
+		params.Logger.Error("❌ Proxy request failed", err, map[string]interface{}{
+			"target_url": targetURL,
+			"method":     params.Request.Method,
+		})
 		return nil, fmt.Errorf("proxy request failed: %w", err)
 	}
 
+	// Log detailed response information
 	params.Logger.Info("📥 Proxy response received", map[string]interface{}{
-		"status_code": resp.StatusCode,
-		"target_url":  targetURL,
+		"status_code":    resp.StatusCode,
+		"target_url":     targetURL,
+		"content_length": resp.ContentLength,
+		"content_type":   resp.Header.Get("Content-Type"),
+		"server":         resp.Header.Get("Server"),
 	})
+
+	// Log response body size without reading it (to avoid consuming the stream)
+	if resp.ContentLength > 0 {
+		params.Logger.Debug("📊 Response size details", map[string]interface{}{
+			"content_length": resp.ContentLength,
+			"target_url":     targetURL,
+		})
+	} else if resp.ContentLength == -1 {
+		params.Logger.Debug("📊 Response with unknown size", map[string]interface{}{
+			"target_url":        targetURL,
+			"transfer_encoding": resp.Header.Get("Transfer-Encoding"),
+		})
+	}
 
 	return resp, nil
 }
@@ -449,7 +470,7 @@ func (upos *UserProfileOrchestratorStrategy) fetchUserInfo(ctx context.Context, 
 	}
 
 	targetURL := fmt.Sprintf("%s/api/v1/users/%s", serviceInfo.URL, userID)
-	
+
 	req, err := http.NewRequestWithContext(ctx, "GET", targetURL, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
@@ -493,7 +514,7 @@ func (upos *UserProfileOrchestratorStrategy) fetchUserPlants(ctx context.Context
 	}
 
 	targetURL := fmt.Sprintf("%s/api/v1/plants/users/%s", serviceInfo.URL, userID)
-	
+
 	req, err := http.NewRequestWithContext(ctx, "GET", targetURL, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
@@ -542,7 +563,7 @@ func (upos *UserProfileOrchestratorStrategy) fetchUserDevices(ctx context.Contex
 	}
 
 	targetURL := fmt.Sprintf("%s/api/v1/devices/users/%s", serviceInfo.URL, userID)
-	
+
 	req, err := http.NewRequestWithContext(ctx, "GET", targetURL, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)

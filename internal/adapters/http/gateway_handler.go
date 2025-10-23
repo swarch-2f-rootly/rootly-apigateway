@@ -191,6 +191,14 @@ func (gh *GatewayHandler) HandleRequest(c *gin.Context) {
 		}
 	}
 
+	// Handle JSON responses that are preserved as bytes to avoid re-serialization
+	if strings.Contains(strings.ToLower(contentType), "application/json") {
+		if data, ok := response.Body.([]byte); ok {
+			c.Data(response.StatusCode, contentType, data)
+			return
+		}
+	}
+
 	c.JSON(response.StatusCode, response.Body)
 }
 

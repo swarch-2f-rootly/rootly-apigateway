@@ -172,12 +172,10 @@ func (gh *GatewayHandler) HandleRequest(c *gin.Context) {
 	})
 
 	// Send response (support binary bodies like images)
-	contentType := c.GetHeader("Content-Type")
+	// Get content type from response headers (not from request)
+	contentType := "application/json" // default
 	if ctFromResp, ok := response.Headers["Content-Type"]; ok && ctFromResp != "" {
 		contentType = ctFromResp
-	}
-	if contentType == "" {
-		contentType = "application/json"
 	}
 
 	if strings.HasPrefix(strings.ToLower(contentType), "image/") || strings.HasPrefix(strings.ToLower(contentType), "application/octet-stream") {

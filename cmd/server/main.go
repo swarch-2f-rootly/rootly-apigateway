@@ -99,6 +99,9 @@ func main() {
 
 	router := gin.New()
 
+	// Set max multipart memory to 32MB (for large image uploads)
+	router.MaxMultipartMemory = 32 << 20 // 32 MB
+
 	// Add middleware
 	router.Use(gin.Logger())
 	router.Use(gin.Recovery())
@@ -118,15 +121,15 @@ func main() {
 	corsConfig.AllowCredentials = true
 	corsConfig.ExposeHeaders = []string{"Content-Length", "Content-Type", "Authorization"}
 	corsConfig.MaxAge = 12 * time.Hour
-	
+
 	router.Use(cors.New(corsConfig))
 
 	logger.Info("CORS middleware configured", map[string]interface{}{
-		"allow_all_origins":  corsConfig.AllowAllOrigins,
-		"allowed_origins":    corsConfig.AllowOrigins,
-		"allowed_methods":    corsConfig.AllowMethods,
-		"allowed_headers":    corsConfig.AllowHeaders,
-		"allow_credentials":  corsConfig.AllowCredentials,
+		"allow_all_origins": corsConfig.AllowAllOrigins,
+		"allowed_origins":   corsConfig.AllowOrigins,
+		"allowed_methods":   corsConfig.AllowMethods,
+		"allowed_headers":   corsConfig.AllowHeaders,
+		"allow_credentials": corsConfig.AllowCredentials,
 	})
 
 	// Setup JWT middleware for authentication
@@ -140,10 +143,10 @@ func main() {
 	router.Use(jwtMiddleware.ValidateRequest())
 
 	logger.Info("JWT middleware configured", map[string]interface{}{
-		"auth_service_url":     cfg.Services["auth"].URL,
-		"validation_endpoint":  cfg.Auth.ValidationEndpoint,
-		"validation_strategy":  cfg.Auth.ValidationStrategy,
-		"jwt_expiration":       cfg.Auth.JWTExpiration,
+		"auth_service_url":    cfg.Services["auth"].URL,
+		"validation_endpoint": cfg.Auth.ValidationEndpoint,
+		"validation_strategy": cfg.Auth.ValidationStrategy,
+		"jwt_expiration":      cfg.Auth.JWTExpiration,
 	})
 
 	// Register routes
